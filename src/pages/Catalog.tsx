@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
@@ -6,22 +6,77 @@ import { ProductCard } from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
-import { products, categories } from '@/lib/mockData';
+import { categoriesApi, productsApi, Category, Product } from '@/lib/api';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { toast } from 'sonner';
+
+// Маппинг slug -> ID категорий
+const categorySlugToIdMap: Record<string, number> = {
+  'cpu': 1,
+  'gpu': 2,
+  'motherboard': 3,
+  'ram': 4,
+  'ssd': 5,
+  'hdd': 6,
+  'cooling': 7,
+  'psu': 8,
+  'case': 9,
+};
 
 const Catalog = () => {
   const { categoryId } = useParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('popular');
   const [perPage, setPerPage] = useState('24');
+  const [category, setCategory] = useState<Category | null>(null);
+  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const category = categories.find((c) => c.id === categoryId);
-  const categoryProducts = products.filter((p) => p.categoryId === categoryId);
+  useEffect(() => {
+    if (categoryId) {
+      loadData();
+    }
+  }, [categoryId]);
+
+  const loadData = async () => {
+    if (!categoryId) return;
+    setIsLoading(true);
+    try {
+      // Преобразуем slug в ID
+      const categoryIdNum = categorySlugToIdMap[categoryId] || parseInt(categoryId);
+      
+      const [categoryData, productsData] = await Promise.all([
+        categoriesApi.getById(categoryIdNum),
+        productsApi.getAll(),
+      ]);
+
+      setCategory(categoryData);
+      const filtered = productsData.filter((p) => p.categoryId === categoryIdNum);
+      setCategoryProducts(filtered);
+    } catch (error: any) {
+      console.error('Error loading catalog:', error);
+      toast.error('Ошибка загрузки каталога');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const breadcrumbItems = [
-    { label: 'Категории', href: '/categories' },
-    { label: category?.name || '', href: '' }
+    { label: 'Комплектующие для ПК', href: '/categories' },
+    { label: category?.nameCategory || '', href: '' }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-6 md:px-12 py-8">
+          <div>Загрузка...</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -32,7 +87,7 @@ const Catalog = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold">{category?.name}</h1>
+            <h1 className="text-3xl font-bold">{category?.nameCategory}</h1>
             <p className="text-muted-foreground mt-1">
               Найдено товаров: {categoryProducts.length}
             </p>
@@ -129,17 +184,23 @@ const Catalog = () => {
             </div>
 
             {/* Products Grid */}
-            <div
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-                  : 'space-y-4'
-              }
-            >
-              {categoryProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {categoryProducts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Товары в этой категории не найдены
+              </div>
+            ) : (
+              <div
+                className={
+                  viewMode === 'grid'
+                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                    : 'space-y-4'
+                }
+              >
+                {categoryProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} viewMode={viewMode} />
+                ))}
+              </div>
+            )}
 
             {/* Pagination */}
             <div className="mt-8 flex items-center justify-between">
