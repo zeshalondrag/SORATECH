@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useStore } from '@/stores/useStore';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
-import { authApi } from '@/lib/api';
+import { authApi, User, usersApi } from '@/lib/api';
 import { ResetPasswordModal } from './ResetPasswordModal';
 
 export const AuthModal = () => {
@@ -41,7 +41,23 @@ export const AuthModal = () => {
         password: formData.password,
       });
       
-      login(response.user, response.token);
+      // Загружаем полные данные пользователя после логина
+      try {
+        const fullUser = await usersApi.getCurrentUser();
+        login(fullUser, response.token);
+      } catch {
+        // Если не удалось загрузить полные данные, используем упрощенную версию
+        const user: User = {
+          id: response.user.id,
+          roleId: 0,
+          email: response.user.email,
+          firstName: response.user.firstName,
+          nickname: response.user.nickname || '',
+          phone: response.user.phone || '',
+          role: response.user.role ? { id: 0, roleName: response.user.role } : undefined,
+        };
+        login(user, response.token);
+      }
       toast.success('Вход выполнен');
       closeAuthModal();
       setFormData({
@@ -82,7 +98,23 @@ export const AuthModal = () => {
         phone: formData.phone || undefined,
       });
       
-      login(response.user, response.token);
+      // Загружаем полные данные пользователя после регистрации
+      try {
+        const fullUser = await usersApi.getCurrentUser();
+        login(fullUser, response.token);
+      } catch {
+        // Если не удалось загрузить полные данные, используем упрощенную версию
+        const user: User = {
+          id: response.user.id,
+          roleId: 0,
+          email: response.user.email,
+          firstName: response.user.firstName,
+          nickname: response.user.nickname || '',
+          phone: response.user.phone || '',
+          role: response.user.role ? { id: 0, roleName: response.user.role } : undefined,
+        };
+        login(user, response.token);
+      }
       toast.success('Регистрация успешна');
       closeAuthModal();
       setFormData({

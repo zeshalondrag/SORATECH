@@ -30,11 +30,17 @@ export interface LoginResponse {
 
 export interface User {
   id: number;
+  roleId: number;
   email: string;
+  passwordHash?: string;
   firstName: string;
-  nickname?: string;
-  phone?: string;
-  role?: string;
+  nickname: string;
+  phone: string;
+  registrationDate?: string;
+  role?: {
+    id: number;
+    roleName: string;
+  };
 }
 
 export interface Address {
@@ -48,10 +54,14 @@ export interface Address {
 
 export interface Order {
   id: number;
+  orderNumber: string;
   userId: number;
   orderDate: string;
   totalAmount: number;
-  status: string;
+  statusOrderId: number;
+  addressId?: number;
+  deliveryTypesId: number;
+  paymentTypesId: number;
   orderItems?: OrderItem[];
 }
 
@@ -60,9 +70,9 @@ export interface OrderItem {
   orderId: number;
   productId: number;
   quantity: number;
-  price: number;
+  unitPrice: number;
   product?: {
-    id: string;
+    id: number;
     name: string;
     imageUrl?: string;
   };
@@ -70,18 +80,18 @@ export interface OrderItem {
 
 export interface Review {
   id: number;
-  userId: number;
   productId: number;
+  userId: number;
   rating: number;
-  comment: string;
-  createdAt: string;
+  commentText?: string;
+  reviewDate: string;
   product?: {
-    id: string;
+    id: number;
     name: string;
     imageUrl?: string;
   };
   user?: {
-    id: string;
+    id: number;
     firstName: string;
     nickname?: string;
   };
@@ -138,26 +148,52 @@ async function apiRequest<T>(
   if (!response.ok) {
     let errorMessage = `HTTP error! status: ${response.status}`;
     try {
-      const error = await response.json();
-      // Обработка ошибок валидации ASP.NET (ProblemDetails)
-      if (error.errors) {
-        // Если есть ошибки валидации, собираем их в одну строку
-        const validationErrors = Object.entries(error.errors)
-          .map(([key, value]: [string, any]) => {
-            if (Array.isArray(value)) {
-              return `${key}: ${value.join(', ')}`;
-            }
-            return `${key}: ${value}`;
-          })
-          .join('; ');
-        errorMessage = validationErrors || error.title || errorMessage;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else if (error.title) {
-        errorMessage = error.title;
+      // Клонируем response для чтения, так как response можно прочитать только один раз
+      const responseClone = response.clone();
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (contentType.includes('application/json')) {
+        const error = await response.json();
+        // Обработка ошибок валидации ASP.NET (ProblemDetails)
+        if (error.errors) {
+          // Если есть ошибки валидации, собираем их в одну строку
+          const validationErrors = Object.entries(error.errors)
+            .map(([key, value]: [string, any]) => {
+              if (Array.isArray(value)) {
+                return `${key}: ${value.join(', ')}`;
+              }
+              return `${key}: ${value}`;
+            })
+            .join('; ');
+          errorMessage = validationErrors || error.title || errorMessage;
+        } else if (error.message) {
+          errorMessage = error.message;
+        } else if (error.title) {
+          errorMessage = error.title;
+        } else if (error.detail) {
+          errorMessage = error.detail;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+      } else {
+        // Если не JSON, пытаемся прочитать как текст
+        const text = await responseClone.text();
+        if (text && text.trim()) {
+          // Извлекаем основное сообщение об ошибке из текста
+          const lines = text.split('\n');
+          const mainError = lines.find(line => 
+            line.includes('не существует') || 
+            line.includes('does not exist') ||
+            line.includes('Exception') ||
+            line.includes('ОШИБКА') ||
+            line.includes('ERROR')
+          ) || lines[0] || text;
+          errorMessage = mainError.trim().substring(0, 200); // Ограничиваем длину
+        }
       }
-    } catch {
-      // Если не удалось распарсить JSON, используем стандартное сообщение
+    } catch (parseError) {
+      // Если не удалось распарсить, используем стандартное сообщение
+      console.error('Error parsing error response:', parseError);
     }
     throw new Error(errorMessage);
   }
@@ -286,7 +322,7 @@ export const ordersApi = {
     return apiRequest<Order>(`/api/Orders/${id}`);
   },
 
-  create: async (data: Omit<Order, 'idOrder' | 'orderDate'>): Promise<Order> => {
+  create: async (data: Omit<Order, 'id'>): Promise<Order> => {
     return apiRequest<Order>('/api/Orders', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -304,7 +340,7 @@ export const reviewsApi = {
     return apiRequest<Review>(`/api/Reviews/${id}`);
   },
 
-  create: async (data: Omit<Review, 'idReview' | 'createdAt'>): Promise<Review> => {
+  create: async (data: Omit<Review, 'id' | 'reviewDate'>): Promise<Review> => {
     return apiRequest<Review>('/api/Reviews', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -321,6 +357,405 @@ export const reviewsApi = {
   delete: async (id: number): Promise<void> => {
     return apiRequest<void>(`/api/Reviews/${id}`, {
       method: 'DELETE',
+    });
+  },
+};
+
+// Admin Panel Types
+export interface AuditLog {
+  id: number;
+  tableName: string;
+  operation: string;
+  recordId?: string;
+  oldData?: string;
+  newData?: string;
+  changedBy?: string;
+  changedAt?: string;
+}
+
+export interface Category {
+  id: number;
+  nameCategory: string;
+  description: string;
+}
+
+export interface Characteristic {
+  id: number;
+  nameCharacteristic: string;
+  description: string;
+}
+
+export interface DeliveryType {
+  id: number;
+  deliveryTypeName: string;
+  description: string;
+}
+
+export interface PaymentType {
+  id: number;
+  paymentTypeName: string;
+  description: string;
+}
+
+export interface Product {
+  id: number;
+  nameProduct: string;
+  article: string;
+  description: string;
+  price: number;
+  stockQuantity?: number;
+  categoryId: number;
+  supplierId: number;
+  imageUrl?: string;
+  salesCount: number;
+}
+
+export interface ProductCharacteristic {
+  id: number;
+  productId: number;
+  characteristicId: number;
+  description: string;
+}
+
+export interface Role {
+  id: number;
+  roleName: string;
+}
+
+export interface StatusOrder {
+  id: number;
+  statusName: string;
+}
+
+export interface Supplier {
+  id: number;
+  nameSupplier: string;
+  contactEmail: string;
+  phone: string;
+}
+
+export interface Cart {
+  id: number;
+  userId: number;
+  productId: number;
+  quantity: number;
+  addedAt?: string;
+}
+
+export interface Favorite {
+  id: number;
+  userId: number;
+  productId: number;
+  addedAt?: string;
+}
+
+// Admin API
+export const auditLogsApi = {
+  getAll: async (): Promise<AuditLog[]> => {
+    return apiRequest<AuditLog[]>('/api/AuditLogs');
+  },
+  getById: async (id: number): Promise<AuditLog> => {
+    return apiRequest<AuditLog>(`/api/AuditLogs/${id}`);
+  },
+};
+
+export const categoriesApi = {
+  getAll: async (): Promise<Category[]> => {
+    return apiRequest<Category[]>('/api/Categories');
+  },
+  getById: async (id: number): Promise<Category> => {
+    return apiRequest<Category>(`/api/Categories/${id}`);
+  },
+  create: async (data: Omit<Category, 'id'>): Promise<Category> => {
+    return apiRequest<Category>('/api/Categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Category>): Promise<Category> => {
+    return apiRequest<Category>(`/api/Categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Categories/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const characteristicsApi = {
+  getAll: async (): Promise<Characteristic[]> => {
+    return apiRequest<Characteristic[]>('/api/Characteristics');
+  },
+  getById: async (id: number): Promise<Characteristic> => {
+    return apiRequest<Characteristic>(`/api/Characteristics/${id}`);
+  },
+  create: async (data: Omit<Characteristic, 'id'>): Promise<Characteristic> => {
+    return apiRequest<Characteristic>('/api/Characteristics', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Characteristic>): Promise<Characteristic> => {
+    return apiRequest<Characteristic>(`/api/Characteristics/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Characteristics/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const deliveryTypesApi = {
+  getAll: async (): Promise<DeliveryType[]> => {
+    return apiRequest<DeliveryType[]>('/api/DeliveryTypes');
+  },
+  getById: async (id: number): Promise<DeliveryType> => {
+    return apiRequest<DeliveryType>(`/api/DeliveryTypes/${id}`);
+  },
+  create: async (data: Omit<DeliveryType, 'id'>): Promise<DeliveryType> => {
+    return apiRequest<DeliveryType>('/api/DeliveryTypes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<DeliveryType>): Promise<DeliveryType> => {
+    return apiRequest<DeliveryType>(`/api/DeliveryTypes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/DeliveryTypes/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const paymentTypesApi = {
+  getAll: async (): Promise<PaymentType[]> => {
+    return apiRequest<PaymentType[]>('/api/PaymentTypes');
+  },
+  getById: async (id: number): Promise<PaymentType> => {
+    return apiRequest<PaymentType>(`/api/PaymentTypes/${id}`);
+  },
+  create: async (data: Omit<PaymentType, 'id'>): Promise<PaymentType> => {
+    return apiRequest<PaymentType>('/api/PaymentTypes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<PaymentType>): Promise<PaymentType> => {
+    return apiRequest<PaymentType>(`/api/PaymentTypes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/PaymentTypes/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const productsApi = {
+  getAll: async (): Promise<Product[]> => {
+    return apiRequest<Product[]>('/api/Products');
+  },
+  getById: async (id: number): Promise<Product> => {
+    return apiRequest<Product>(`/api/Products/${id}`);
+  },
+  create: async (data: Omit<Product, 'id'>): Promise<Product> => {
+    return apiRequest<Product>('/api/Products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Product>): Promise<Product> => {
+    return apiRequest<Product>(`/api/Products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Products/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const productCharacteristicsApi = {
+  getAll: async (): Promise<ProductCharacteristic[]> => {
+    return apiRequest<ProductCharacteristic[]>('/api/ProductCharacteristics');
+  },
+  getById: async (id: number): Promise<ProductCharacteristic> => {
+    return apiRequest<ProductCharacteristic>(`/api/ProductCharacteristics/${id}`);
+  },
+  create: async (data: Omit<ProductCharacteristic, 'id'>): Promise<ProductCharacteristic> => {
+    return apiRequest<ProductCharacteristic>('/api/ProductCharacteristics', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<ProductCharacteristic>): Promise<ProductCharacteristic> => {
+    return apiRequest<ProductCharacteristic>(`/api/ProductCharacteristics/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/ProductCharacteristics/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const rolesApi = {
+  getAll: async (): Promise<Role[]> => {
+    return apiRequest<Role[]>('/api/Roles');
+  },
+  getById: async (id: number): Promise<Role> => {
+    return apiRequest<Role>(`/api/Roles/${id}`);
+  },
+  create: async (data: Omit<Role, 'id'>): Promise<Role> => {
+    return apiRequest<Role>('/api/Roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Role>): Promise<Role> => {
+    return apiRequest<Role>(`/api/Roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Roles/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const statusOrdersApi = {
+  getAll: async (): Promise<StatusOrder[]> => {
+    return apiRequest<StatusOrder[]>('/api/StatusOrders');
+  },
+  getById: async (id: number): Promise<StatusOrder> => {
+    return apiRequest<StatusOrder>(`/api/StatusOrders/${id}`);
+  },
+  create: async (data: Omit<StatusOrder, 'id'>): Promise<StatusOrder> => {
+    return apiRequest<StatusOrder>('/api/StatusOrders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<StatusOrder>): Promise<StatusOrder> => {
+    return apiRequest<StatusOrder>(`/api/StatusOrders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/StatusOrders/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const suppliersApi = {
+  getAll: async (): Promise<Supplier[]> => {
+    return apiRequest<Supplier[]>('/api/Suppliers');
+  },
+  getById: async (id: number): Promise<Supplier> => {
+    return apiRequest<Supplier>(`/api/Suppliers/${id}`);
+  },
+  create: async (data: Omit<Supplier, 'id'>): Promise<Supplier> => {
+    return apiRequest<Supplier>('/api/Suppliers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Supplier>): Promise<Supplier> => {
+    return apiRequest<Supplier>(`/api/Suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Suppliers/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const adminUsersApi = {
+  getAll: async (): Promise<User[]> => {
+    return apiRequest<User[]>('/api/Users');
+  },
+  getById: async (id: number): Promise<User> => {
+    return apiRequest<User>(`/api/Users/${id}`);
+  },
+  create: async (data: Omit<User, 'id'>): Promise<User> => {
+    return apiRequest<User>('/api/Users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<User>): Promise<User> => {
+    return apiRequest<User>(`/api/Users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Users/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+export const adminOrdersApi = {
+  getAll: async (): Promise<Order[]> => {
+    return apiRequest<Order[]>('/api/Orders');
+  },
+  getById: async (id: number): Promise<Order> => {
+    return apiRequest<Order>(`/api/Orders/${id}`);
+  },
+  create: async (data: Omit<Order, 'id'>): Promise<Order> => {
+    return apiRequest<Order>('/api/Orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Order>): Promise<Order> => {
+    return apiRequest<Order>(`/api/Orders/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Orders/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// Backup API
+export interface BackupResponse {
+  message: string;
+  sqlFile: string;
+  jsonFile: string;
+}
+
+export const backupApi = {
+  create: async (): Promise<BackupResponse> => {
+    return apiRequest<BackupResponse>('/api/Backup/create', {
+      method: 'POST',
     });
   },
 };

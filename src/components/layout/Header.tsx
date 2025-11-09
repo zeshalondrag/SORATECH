@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useStore } from '@/stores/useStore';
 import { Badge } from '@/components/ui/badge';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useEffect, useState } from 'react';
 
 export const Header = () => {
@@ -53,13 +54,16 @@ export const Header = () => {
               </Link>
             </nav>
 
-            {/* Configurator Button */}
-            <Button variant="outline" asChild>
-              <Link to="/configurator" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Конфигуратор ПК
-              </Link>
-            </Button>
+            {/* Theme Toggle and Configurator Button */}
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button variant="outline" asChild>
+                <Link to="/configurator" className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Конфигуратор ПК
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
