@@ -79,20 +79,20 @@ export const AuthModal = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Пароли не совпадают');
-      return;
-    }
-    if (!formData.agreeTerms) {
-      toast.error('Необходимо принять условия соглашения');
-      return;
-    }
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Пароли не совпадают');
+        return;
+      }
+      if (!formData.agreeTerms) {
+        toast.error('Необходимо принять условия соглашения');
+        return;
+      }
 
     setIsLoading(true);
 
     try {
       const response = await authApi.register({
-        email: formData.email,
+      email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         phone: formData.phone || undefined,
@@ -140,7 +140,7 @@ export const AuthModal = () => {
     try {
       await authApi.requestPasswordReset({ email: formData.email });
       setResetEmail(formData.email);
-      closeAuthModal();
+    closeAuthModal();
       setIsResetPasswordModalOpen(true);
       toast.success('Код отправлен на вашу почту');
     } catch (error: any) {
