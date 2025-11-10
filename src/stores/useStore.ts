@@ -12,7 +12,7 @@ interface StoreState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
+  login: (user: User, token: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   
@@ -25,9 +25,11 @@ interface StoreState {
   
   // Favorites
   favorites: Product[];
-  addToFavorites: (product: Product) => void;
+  favoriteIds: Record<string, number>;
+  addToFavorites: (product: Product, favoriteId?: number) => void;
   removeFromFavorites: (productId: string) => void;
-  toggleFavorite: (product: Product) => void;
+  toggleFavorite: (product: Product) => Promise<void>;
+  loadFavorites: () => Promise<void>;
   
   // Comparison
   comparison: Product[];
@@ -52,9 +54,13 @@ export const useStore = create<StoreState>()(
       // Auth
       user: null,
       isAuthenticated: false,
-      login: (user, token) => {
+      login: async (user, token) => {
         localStorage.setItem('auth_token', token);
         set({ user, isAuthenticated: true });
+        // Загружаем избранное после входа
+        setTimeout(() => {
+          get().loadFavorites();
+        }, 100);
       },
       logout: () => {
         authApi.logout();
@@ -99,25 +105,108 @@ export const useStore = create<StoreState>()(
       
       // Favorites
       favorites: [],
-      addToFavorites: (product) =>
+      favoriteIds: {} as Record<string, number>, // productId -> favoriteId mapping
+      addToFavorites: (product, favoriteId?: number) =>
         set((state) => {
           if (state.favorites.find((p) => p.id === product.id)) {
             return state;
           }
-          return { favorites: [...state.favorites, product] };
+          const newFavoriteIds = { ...state.favoriteIds };
+          if (favoriteId) {
+            newFavoriteIds[product.id] = favoriteId;
+          }
+          return { 
+            favorites: [...state.favorites, product],
+            favoriteIds: newFavoriteIds
+          };
         }),
       removeFromFavorites: (productId) =>
-        set((state) => ({
-          favorites: state.favorites.filter((p) => p.id !== productId),
-        })),
-      toggleFavorite: (product) => {
-        const { favorites } = get();
+        set((state) => {
+          const newFavoriteIds = { ...state.favoriteIds };
+          delete newFavoriteIds[productId];
+          return {
+            favorites: state.favorites.filter((p) => p.id !== productId),
+            favoriteIds: newFavoriteIds
+          };
+        }),
+      toggleFavorite: async (product) => {
+        const { favorites, favoriteIds, user, isAuthenticated } = get();
+        
+        // Проверка авторизации
+        if (!isAuthenticated || !user) {
+          get().openAuthModal('login');
+          return;
+        }
+
         const exists = favorites.find((p) => p.id === product.id);
         
-        if (exists) {
-          get().removeFromFavorites(product.id);
-        } else {
-          get().addToFavorites(product);
+        try {
+          if (exists) {
+            // Удаляем из избранного через API
+            const favoriteId = favoriteIds[product.id];
+            if (favoriteId) {
+              const { favoritesApi } = await import('@/lib/api');
+              await favoritesApi.delete(favoriteId);
+            }
+            get().removeFromFavorites(product.id);
+          } else {
+            // Добавляем в избранное через API
+            const { favoritesApi } = await import('@/lib/api');
+            const created = await favoritesApi.create({
+              userId: user.id,
+              productId: typeof product.id === 'string' ? parseInt(product.id) : product.id
+            });
+            get().addToFavorites(product, created.id);
+          }
+        } catch (error: any) {
+          console.error('Error toggling favorite:', error);
+          throw error;
+        }
+      },
+      loadFavorites: async () => {
+        const { user, isAuthenticated } = get();
+        if (!isAuthenticated || !user) return;
+        
+        try {
+          const { favoritesApi, productsApi } = await import('@/lib/api');
+          const [favoritesData, productsData] = await Promise.all([
+            favoritesApi.getAll(),
+            productsApi.getAll(),
+          ]);
+
+          const userFavorites = favoritesData.filter(f => f.userId === user.id);
+          const favoriteProducts = productsData
+            .filter(p => userFavorites.some(f => f.productId === p.id))
+            .map(p => {
+              const favorite = userFavorites.find(f => f.productId === p.id);
+              return {
+                ...p,
+                id: String(p.id),
+                name: p.nameProduct,
+                category: '',
+                image: p.imageUrl || '/placeholder.svg',
+                images: [p.imageUrl || '/placeholder.svg'],
+                specs: {},
+                rating: 0,
+                reviewCount: 0,
+                inStock: (p.stockQuantity || 0) > 0,
+                categoryId: String(p.categoryId)
+              };
+            });
+
+          const favoriteIdsMap: Record<string, number> = {};
+          userFavorites.forEach(f => {
+            if (f.id) {
+              favoriteIdsMap[String(f.productId)] = f.id;
+            }
+          });
+
+          set({ 
+            favorites: favoriteProducts,
+            favoriteIds: favoriteIdsMap
+          });
+        } catch (error: any) {
+          console.error('Error loading favorites:', error);
         }
       },
       
@@ -169,6 +258,7 @@ export const useStore = create<StoreState>()(
         isAuthenticated: state.isAuthenticated,
         cart: state.cart,
         favorites: state.favorites,
+        favoriteIds: state.favoriteIds,
         comparison: state.comparison,
         recentlyViewed: state.recentlyViewed,
       }),

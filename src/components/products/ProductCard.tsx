@@ -12,9 +12,10 @@ import { useEffect, useState } from 'react';
 interface ProductCardProps {
   product: ApiProduct | MockProduct;
   viewMode?: 'grid' | 'list';
+  hideFavoriteIcon?: boolean;
 }
 
-export const ProductCard = ({ product, viewMode = 'grid' }: ProductCardProps) => {
+export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = false }: ProductCardProps) => {
   const navigate = useNavigate();
   const { addToCart, toggleFavorite, toggleComparison, favorites, comparison, cart, updateQuantity } = useStore();
   const [characteristics, setCharacteristics] = useState<Array<{ name: string; value: string }>>([]);
@@ -118,7 +119,7 @@ export const ProductCard = ({ product, viewMode = 'grid' }: ProductCardProps) =>
     toast.success('Товар добавлен в корзину');
   };
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     const favProduct = isApiProduct ? {
       id: productId.toString(),
       name: productName,
@@ -134,8 +135,12 @@ export const ProductCard = ({ product, viewMode = 'grid' }: ProductCardProps) =>
       description: product.description,
     } : product;
     
-    toggleFavorite(favProduct);
-    toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    try {
+      await toggleFavorite(favProduct);
+      toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    } catch (error: any) {
+      // Ошибка уже обработана в toggleFavorite (открытие модального окна авторизации)
+    }
   };
 
   const handleToggleComparison = () => {
@@ -291,16 +296,18 @@ export const ProductCard = ({ product, viewMode = 'grid' }: ProductCardProps) =>
                     className={`h-4 w-4 ${isInComparison ? 'fill-current' : ''}`}
                   />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleToggleFavorite}
-                  className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
-                >
-                  <Heart
-                    className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`}
-                  />
-                </Button>
+                {!hideFavoriteIcon && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleToggleFavorite}
+                    className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`}
+                    />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -349,14 +356,16 @@ export const ProductCard = ({ product, viewMode = 'grid' }: ProductCardProps) =>
             >
               <GitCompare className={`h-4 w-4 ${isInComparison ? 'fill-current' : ''}`} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleToggleFavorite}
-              className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
-            >
-              <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-            </Button>
+            {!hideFavoriteIcon && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleToggleFavorite}
+                className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
+              >
+                <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+              </Button>
+            )}
           </div>
         </div>
 

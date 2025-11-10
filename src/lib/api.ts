@@ -760,6 +760,33 @@ export const backupApi = {
   },
 };
 
+// Favorites API
+export const favoritesApi = {
+  getAll: async (): Promise<Favorite[]> => {
+    return apiRequest<Favorite[]>('/api/Favorites');
+  },
+  getById: async (id: number): Promise<Favorite> => {
+    return apiRequest<Favorite>(`/api/Favorites/${id}`);
+  },
+  create: async (data: Omit<Favorite, 'id' | 'addedAt'>): Promise<Favorite> => {
+    return apiRequest<Favorite>('/api/Favorites', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Favorite>): Promise<Favorite> => {
+    return apiRequest<Favorite>(`/api/Favorites/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Favorites/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 // Экспорт утилит для работы с токенами
 export { getToken, setToken, removeToken };
 

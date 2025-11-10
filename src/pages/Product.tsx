@@ -248,7 +248,7 @@ const Product = () => {
     }
   };
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
     const productForStore = {
       ...product,
       id: String(product.id),
@@ -262,8 +262,12 @@ const Product = () => {
       inStock: inStock,
       categoryId: String(product.categoryId)
     };
-    toggleFavorite(productForStore);
-    toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    try {
+      await toggleFavorite(productForStore);
+      toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    } catch (error: any) {
+      // Ошибка уже обработана в toggleFavorite (открытие модального окна авторизации)
+    }
   };
 
   const handleToggleComparison = () => {
