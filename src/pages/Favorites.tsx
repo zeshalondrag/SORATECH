@@ -6,7 +6,8 @@ import { ProductCard } from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { X, Heart } from 'lucide-react';
 import { favoritesApi, productsApi, reviewsApi, type Favorite, type Product } from '@/lib/api';
 import { useStore } from '@/stores/useStore';
 import { toast } from 'sonner';
@@ -154,83 +155,92 @@ const Favorites = () => {
       <Header />
 
       <main className="flex-1 container mx-auto px-6 md:px-12 py-8">
-
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-3xl font-bold">Избранное</h1>
-            <span className="text-muted-foreground text-2xl">
-              {products.length} {products.length === 1 ? 'товар' : products.length < 5 ? 'товара' : 'товаров'}
-            </span>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Все товары</h2>
-          <div className="flex items-center gap-4 flex-wrap">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Сортировка" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="popular">Сначала популярные</SelectItem>
-                <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
-                <SelectItem value="price-desc">Сначала дорогие</SelectItem>
-                <SelectItem value="rating">По рейтингу</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="in-stock"
-                checked={onlyInStock}
-                onCheckedChange={(checked) => setOnlyInStock(checked === true)}
-              />
-              <label
-                htmlFor="in-stock"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-              >
-                Есть в наличии
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Products List */}
         {sortedProducts.length > 0 ? (
-          <div className="space-y-4">
-            {sortedProducts.map((product) => {
-              const favorite = favorites.find(f => 
-                Number(f.productId) === Number(product.id) && Number(f.userId) === Number(user?.id)
-              );
-              return (
-                <div key={product.id} className="relative">
-                  <ProductCard product={product} viewMode="list" hideFavoriteIcon={true} />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => handleRemoveFavorite(product.id)}
-                    title="Удалить из избранного"
+          <>
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-3xl font-bold">Избранное</h1>
+                <span className="text-muted-foreground text-3xl">
+                  {products.length} {products.length === 1 ? 'товар' : products.length < 5 ? 'товара' : 'товаров'}
+                </span>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-4">Все товары</h2>
+              <div className="flex items-center gap-4 flex-wrap">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Сортировка" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="popular">Сначала популярные</SelectItem>
+                    <SelectItem value="price-asc">Сначала дешёвые</SelectItem>
+                    <SelectItem value="price-desc">Сначала дорогие</SelectItem>
+                    <SelectItem value="rating">По рейтингу</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="in-stock"
+                    checked={onlyInStock}
+                    onCheckedChange={(checked) => setOnlyInStock(checked === true)}
+                  />
+                  <label
+                    htmlFor="in-stock"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                   >
-                    <X className="h-5 w-5" />
-                  </Button>
+                    Есть в наличии
+                  </label>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+
+            {/* Products List */}
+            <div className="space-y-4">
+              {sortedProducts.map((product) => {
+                const favorite = favorites.find(f => 
+                  Number(f.productId) === Number(product.id) && Number(f.userId) === Number(user?.id)
+                );
+                return (
+                  <div key={product.id} className="relative">
+                    <ProductCard product={product} viewMode="list" hideFavoriteIcon={true} />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-4 right-4 z-10"
+                      onClick={() => handleRemoveFavorite(product.id)}
+                      title="Удалить из избранного"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg mb-4">
-              {onlyInStock 
-                ? 'Нет товаров в наличии в избранном'
-                : 'В избранном пока нет товаров'}
-            </p>
-            <Button onClick={() => navigate('/categories')} variant="outline">
-              Перейти в каталог
-            </Button>
-          </div>
+          <Card>
+            <CardContent className="p-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <Heart className="h-16 w-16 text-muted-foreground" />
+                <div>
+                  <p className="text-lg font-semibold mb-2">
+                    В избранном пока ничего нет
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Нажмите на иконку избранного для добавления в избранное
+                  </p>
+                </div>
+                <Button onClick={() => navigate('/categories')} variant="outline">
+                  Перейти в каталог
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </main>
 

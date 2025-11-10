@@ -330,6 +330,60 @@ export const ordersApi = {
   },
 };
 
+// Carts API
+export const cartsApi = {
+  getAll: async (): Promise<Cart[]> => {
+    return apiRequest<Cart[]>('/api/Carts');
+  },
+  getById: async (id: number): Promise<Cart> => {
+    return apiRequest<Cart>(`/api/Carts/${id}`);
+  },
+  create: async (data: Omit<Cart, 'id' | 'addedAt'>): Promise<Cart> => {
+    return apiRequest<Cart>('/api/Carts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<Cart>): Promise<Cart> => {
+    return apiRequest<Cart>(`/api/Carts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Carts/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// OrderItems API
+export const orderItemsApi = {
+  getAll: async (): Promise<OrderItem[]> => {
+    return apiRequest<OrderItem[]>('/api/OrderItems');
+  },
+  getById: async (id: number): Promise<OrderItem> => {
+    return apiRequest<OrderItem>(`/api/OrderItems/${id}`);
+  },
+  create: async (data: Omit<OrderItem, 'id'>): Promise<OrderItem> => {
+    return apiRequest<OrderItem>('/api/OrderItems', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  update: async (id: number, data: Partial<OrderItem>): Promise<OrderItem> => {
+    return apiRequest<OrderItem>(`/api/OrderItems/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  delete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/OrderItems/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
 // Reviews API
 export const reviewsApi = {
   getAll: async (): Promise<Review[]> => {

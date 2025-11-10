@@ -52,7 +52,8 @@ const Product = () => {
     favorites, 
     comparison, 
     cart, 
-    updateQuantity, 
+    updateQuantity,
+    removeFromCart,
     addToRecentlyViewed, 
     recentlyViewed,
     user
@@ -207,7 +208,7 @@ const Product = () => {
   const inStock = (product.stockQuantity || 0) > 0;
   const maxQuantity = product.stockQuantity || 0;
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!inStock) {
       toast.error('Товар отсутствует в наличии');
       return;
@@ -226,25 +227,40 @@ const Product = () => {
       inStock: inStock,
       categoryId: String(product.categoryId)
     };
-    addToCart(productForCart);
-    toast.success('Товар добавлен в корзину');
+    try {
+      await addToCart(productForCart);
+      toast.success('Товар добавлен в корзину');
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      toast.error('Ошибка при добавлении товара в корзину');
+    }
   };
 
-  const handleIncreaseQuantity = () => {
+  const handleIncreaseQuantity = async () => {
     if (!cartItem) return;
     if (cartItem.quantity >= maxQuantity) {
       toast.error(`Можно добавить не более ${maxQuantity} товаров`);
       return;
     }
-    updateQuantity(String(product.id), cartItem.quantity + 1);
+    try {
+      await updateQuantity(String(product.id), cartItem.quantity + 1);
+    } catch (error: any) {
+      console.error('Error updating quantity:', error);
+      toast.error('Ошибка при обновлении количества');
+    }
   };
 
-  const handleDecreaseQuantity = () => {
+  const handleDecreaseQuantity = async () => {
     if (!cartItem) return;
     if (cartItem.quantity <= 1) {
-      updateQuantity(String(product.id), 0);
+      removeFromCart(String(product.id));
     } else {
-      updateQuantity(String(product.id), cartItem.quantity - 1);
+      try {
+        await updateQuantity(String(product.id), cartItem.quantity - 1);
+      } catch (error: any) {
+        console.error('Error updating quantity:', error);
+        toast.error('Ошибка при обновлении количества');
+      }
     }
   };
 

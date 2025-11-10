@@ -17,7 +17,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = false }: ProductCardProps) => {
   const navigate = useNavigate();
-  const { addToCart, toggleFavorite, toggleComparison, favorites, comparison, cart, updateQuantity } = useStore();
+  const { addToCart, toggleFavorite, toggleComparison, favorites, comparison, cart, updateQuantity, removeFromCart } = useStore();
   const [characteristics, setCharacteristics] = useState<Array<{ name: string; value: string }>>([]);
   const [rating, setRating] = useState<number>(0);
   const [reviewCount, setReviewCount] = useState<number>(0);
@@ -86,7 +86,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     // Проверяем наличие товара
     if (!inStock) {
       toast.error('Товар отсутствует в наличии');
@@ -115,8 +115,14 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
       description: product.description,
     } : product;
     
-    addToCart(cartProduct);
-    toast.success('Товар добавлен в корзину');
+    try {
+      await addToCart(cartProduct);
+      toast.success('Товар добавлен в корзину');
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      const errorMessage = error?.message || error?.title || 'Ошибка при добавлении товара в корзину';
+      toast.error(errorMessage);
+    }
   };
 
   const handleToggleFavorite = async () => {
@@ -439,7 +445,18 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => updateQuantity(productId.toString(), cartItem.quantity - 1)}
+                onClick={async () => {
+                  try {
+                    if (cartItem.quantity <= 1) {
+                      removeFromCart(productId.toString());
+                    } else {
+                      await updateQuantity(productId.toString(), cartItem.quantity - 1);
+                    }
+                  } catch (error: any) {
+                    console.error('Error updating quantity:', error);
+                    toast.error('Ошибка при обновлении количества');
+                  }
+                }}
                 disabled={cartItem.quantity <= 0}
                 className="min-w-[35px]"
               >
@@ -451,12 +468,17 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => {
-                  if (isApiProduct && cartItem.quantity >= productStock) {
-                    toast.error(`Можно добавить не более ${productStock} шт. товара`);
-                    return;
+                onClick={async () => {
+                  try {
+                    if (isApiProduct && cartItem.quantity >= productStock) {
+                      toast.error(`Можно добавить не более ${productStock} шт. товара`);
+                      return;
+                    }
+                    await updateQuantity(productId.toString(), cartItem.quantity + 1);
+                  } catch (error: any) {
+                    console.error('Error updating quantity:', error);
+                    toast.error('Ошибка при обновлении количества');
                   }
-                  updateQuantity(productId.toString(), cartItem.quantity + 1);
                 }}
                 disabled={isApiProduct && cartItem.quantity >= productStock}
                 className="min-w-[35px]"
