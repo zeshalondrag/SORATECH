@@ -117,7 +117,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
     
     try {
       await addToCart(cartProduct);
-      toast.success('Товар добавлен в корзину');
+    toast.success('Товар добавлен в корзину');
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       const errorMessage = error?.message || error?.title || 'Ошибка при добавлении товара в корзину';
@@ -143,7 +143,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
     
     try {
       await toggleFavorite(favProduct);
-      toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
     } catch (error: any) {
       // Ошибка уже обработана в toggleFavorite (открытие модального окна авторизации)
     }
@@ -363,14 +363,14 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
               <GitCompare className={`h-4 w-4 ${isInComparison ? 'fill-current' : ''}`} />
             </Button>
             {!hideFavoriteIcon && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleToggleFavorite}
-                className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
-              >
-                <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-              </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleToggleFavorite}
+              className={`h-8 w-8 ${isFavorite ? 'text-primary' : ''}`}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
+            </Button>
             )}
           </div>
         </div>
@@ -401,14 +401,14 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
 
         {/* Brief specs для mock продуктов */}
         {!isApiProduct && product.specs && (
-          <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
-            {Object.entries(product.specs).slice(0, 2).map(([key, value], idx) => (
-              <span key={key}>
-                {key}: {value}
-                {idx === 0 && ' • '}
-              </span>
-            ))}
-          </div>
+        <div className="text-sm text-muted-foreground mb-2 line-clamp-2">
+          {Object.entries(product.specs).slice(0, 2).map(([key, value], idx) => (
+            <span key={key}>
+              {key}: {value}
+              {idx === 0 && ' • '}
+            </span>
+          ))}
+        </div>
         )}
 
         {/* Rating */}

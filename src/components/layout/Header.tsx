@@ -57,12 +57,12 @@ export const Header = () => {
             {/* Theme Toggle and Configurator Button */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Button variant="outline" asChild>
-                <Link to="/configurator" className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Конфигуратор ПК
-                </Link>
-              </Button>
+            <Button variant="outline" asChild>
+              <Link to="/configurator" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Конфигуратор ПК
+              </Link>
+            </Button>
             </div>
           </div>
         </div>
@@ -93,17 +93,17 @@ export const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {isAuthenticated ? (
+              {isAuthenticated ? (
               <Button variant="ghost" size="icon" asChild>
                 <Link to="/account">
                   <User className="h-5 w-5" />
                 </Link>
               </Button>
-            ) : (
+              ) : (
               <Button variant="ghost" size="icon" onClick={() => openAuthModal()}>
                 <User className="h-5 w-5" />
               </Button>
-            )}
+              )}
 
             <Button variant="ghost" size="icon" className="relative" asChild>
               <Link to="/comparison">

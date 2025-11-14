@@ -78,6 +78,24 @@ export interface OrderItem {
   };
 }
 
+export interface CreateOrderItem {
+  productId: number;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreateOrder {
+  orderNumber: string;
+  userId: number;
+  orderDate: string;
+  totalAmount: number;
+  statusOrderId: number;
+  addressId?: number;
+  deliveryTypesId: number;
+  paymentTypesId: number;
+  orderItems: CreateOrderItem[];
+}
+
 export interface Review {
   id: number;
   productId: number;
@@ -239,14 +257,6 @@ export const authApi = {
     removeToken();
   },
 
-  requestPasswordReset: async (data: ResetPasswordRequest): Promise<void> => {
-    // Предполагаем, что API отправляет код на почту
-    // Если endpoint отличается, нужно будет обновить
-    return apiRequest<void>('/api/Auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
 
   verifyCode: async (data: VerifyCodeRequest): Promise<{ valid: boolean }> => {
     // Если API не имеет отдельного endpoint для проверки кода,
@@ -322,12 +332,21 @@ export const ordersApi = {
     return apiRequest<Order>(`/api/Orders/${id}`);
   },
 
-  create: async (data: Omit<Order, 'id'>): Promise<Order> => {
-    return apiRequest<Order>('/api/Orders', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+  create: async (data: CreateOrder): Promise<Order> => {
+    console.log('Sending order creation request:', data);
+    try {
+      const result = await apiRequest<Order>('/api/Orders', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      console.log('Order created successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in ordersApi.create:', error);
+      throw error;
+    }
   },
+
 };
 
 // Carts API

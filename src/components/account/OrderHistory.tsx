@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { Search, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { ordersApi, Order } from '@/lib/api';
+import { ordersApi, Order, statusOrdersApi, StatusOrder, orderItemsApi, OrderItem, productsApi } from '@/lib/api';
 import { OrderDetailsModal } from '@/components/account/OrderDetailsModal';
 import { useStore } from '@/stores/useStore';
 import {
@@ -27,30 +28,125 @@ export const OrderHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusOrders, setStatusOrders] = useState<StatusOrder[]>([]);
   const itemsPerPage = 5;
 
-  useEffect(() => {
-    loadOrders();
+  // Функция загрузки заказов
+  const loadOrders = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      setOrders([]);
+      setFilteredOrders([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const [data, statusData, allOrderItems] = await Promise.all([
+        ordersApi.getAll(),
+        statusOrdersApi.getAll(),
+        orderItemsApi.getAll()
+      ]);
+      
+      setStatusOrders(statusData);
+      console.log('Все заказы из API:', data);
+      console.log('Текущий пользователь ID:', user.id, 'тип:', typeof user.id);
+      
+      // Фильтруем заказы текущего пользователя (сравниваем как числа для надежности)
+      let userOrders = data.filter((order) => {
+        const orderUserId = Number(order.userId);
+        const currentUserId = Number(user.id);
+        const match = orderUserId === currentUserId;
+        console.log(`Заказ ${order.id}: userId=${orderUserId}, текущий=${currentUserId}, совпадение=${match}`);
+        return match;
+      });
+      
+      // Загружаем информацию о продуктах для orderItems и добавляем их к заказам
+      const orderItemsMap = new Map<number, OrderItem[]>();
+      allOrderItems.forEach(item => {
+        if (!orderItemsMap.has(item.orderId)) {
+          orderItemsMap.set(item.orderId, []);
+        }
+        orderItemsMap.get(item.orderId)!.push(item);
+      });
+      
+      // Загружаем информацию о продуктах для каждого элемента заказа
+      userOrders = await Promise.all(userOrders.map(async (order) => {
+        const orderItems = orderItemsMap.get(order.id) || [];
+        
+        // Загружаем информацию о продуктах
+        const itemsWithProducts = await Promise.all(
+          orderItems.map(async (item) => {
+            try {
+              const product = await productsApi.getById(item.productId);
+              return {
+                ...item,
+                product: {
+                  id: product.id,
+                  name: product.nameProduct,
+                  imageUrl: product.imageUrl,
+                },
+              };
+            } catch (error) {
+              console.error(`Error loading product ${item.productId}:`, error);
+              return {
+                ...item,
+                product: {
+                  id: item.productId,
+                  name: 'Товар',
+                  imageUrl: undefined,
+                },
+              };
+            }
+          })
+        );
+        
+        return {
+          ...order,
+          orderItems: itemsWithProducts,
+        };
+      }));
+      
+      console.log('Отфильтрованные заказы пользователя с товарами:', userOrders);
+      setOrders(userOrders);
+      setFilteredOrders(userOrders);
+    } catch (error: any) {
+      console.error('Ошибка загрузки заказов:', error);
+      toast.error('Ошибка загрузки заказов');
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
+
+  // Загружаем заказы при изменении пользователя
+  useEffect(() => {
+    if (user) {
+      loadOrders();
+    } else {
+      setOrders([]);
+      setFilteredOrders([]);
+      setIsLoading(false);
+    }
+  }, [user, loadOrders]); // Зависимость от user и loadOrders
 
   useEffect(() => {
     filterOrders();
   }, [searchQuery, orders]);
 
-  const loadOrders = async () => {
-    setIsLoading(true);
-    try {
-      const data = await ordersApi.getAll();
-      // Фильтруем заказы текущего пользователя
-      const userOrders = user ? data.filter((order) => order.userId === user.id) : [];
-      setOrders(userOrders);
-      setFilteredOrders(userOrders);
-    } catch (error: any) {
-      toast.error('Ошибка загрузки заказов');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Слушаем событие обновления заказов
+  useEffect(() => {
+    if (!user) return;
+
+    const handleOrderCreated = () => {
+      console.log('Получено событие orderCreated, перезагружаем заказы...');
+      loadOrders();
+    };
+
+    window.addEventListener('orderCreated', handleOrderCreated);
+    return () => {
+      window.removeEventListener('orderCreated', handleOrderCreated);
+    };
+  }, [user, loadOrders]); // Добавляем user и loadOrders в зависимости
 
   const filterOrders = () => {
     if (!searchQuery.trim()) {
@@ -105,41 +201,59 @@ export const OrderHistory = () => {
           </div>
         ) : (
           <>
-            <div className="space-y-4">
-              {paginatedOrders.map((order) => (
-                <Card key={order.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Заказ #{order.id}</CardTitle>
-                        <CardDescription>
-                          {format(new Date(order.orderDate), 'dd MMMM yyyy, HH:mm', { locale: ru })}
-                        </CardDescription>
+            <div className="space-y-3">
+              {paginatedOrders.map((order) => {
+                const status = statusOrders.find(s => s.id === order.statusOrderId);
+                // Считаем общее количество товаров (сумма quantity всех позиций)
+                const totalItemsCount = order.orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                const itemsCount = order.orderItems?.length || 0;
+                
+                return (
+                  <Card key={order.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-lg font-semibold mb-1">
+                            Заказ {order.orderNumber || `#${order.id}`}
+                          </CardTitle>
+                          <CardDescription className="text-xs mb-2">
+                            {format(new Date(order.orderDate), 'dd MMMM yyyy, HH:mm', { locale: ru })}
+                          </CardDescription>
+                          {status && (
+                            <Badge variant="default" className="text-xs">
+                              {status.statusName}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+                          onClick={() => setSelectedOrder(order)}
+                        >
+                          <Eye className="h-4 w-4 mr-1.5" />
+                          Подробнее
+                        </Button>
                       </div>
-                      <Badge variant="outline">{order.status}</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Товаров: {order.orderItems?.length || 0}
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {order.totalAmount.toLocaleString('ru-RU')} ₽
-                        </p>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">                        
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Всего товаров: <span className="font-medium">{totalItemsCount}</span>
+                            </p>
+                            <p className="text-base font-semibold mt-1">
+                              {order.totalAmount.toLocaleString('ru-RU')} ₽
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Подробнее
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {totalPages > 1 && (

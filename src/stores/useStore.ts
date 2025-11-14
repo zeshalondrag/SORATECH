@@ -185,9 +185,7 @@ export const useStore = create<StoreState>()(
             try {
               const { cartsApi } = await import('@/lib/api');
               await cartsApi.delete(cartIds[productId]);
-            } catch (error) {
-              console.error('Error removing from cart in API:', error);
-            }
+            } catch (error: any) {}
           })();
           const newCartIds = { ...cartIds };
           delete newCartIds[productId];

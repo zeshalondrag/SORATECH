@@ -44,10 +44,12 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { cartsApi, productsApi, addressesApi, deliveryTypesApi, paymentTypesApi, ordersApi, statusOrdersApi, orderItemsApi, type Cart, type Product, type Address, type DeliveryType, type PaymentType } from '@/lib/api';
+import { cartsApi, productsApi, addressesApi, deliveryTypesApi, paymentTypesApi, ordersApi, statusOrdersApi, orderItemsApi, type Cart, type Product, type Address, type DeliveryType, type PaymentType, type Order, type OrderItem, type CreateOrder } from '@/lib/api';
 import { useStore } from '@/stores/useStore';
 import { toast } from 'sonner';
 import { productCharacteristicsApi, characteristicsApi, reviewsApi } from '@/lib/api';
+import { OrderSuccessModal } from '@/components/account/OrderSuccessModal';
+import { sendReceiptEmail } from '@/lib/emailService';
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -84,6 +86,12 @@ const Cart = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successOrder, setSuccessOrder] = useState<Order | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successDeliveryType, setSuccessDeliveryType] = useState<DeliveryType | undefined>(undefined);
+  const [successPaymentType, setSuccessPaymentType] = useState<PaymentType | undefined>(undefined);
+  const [successAddress, setSuccessAddress] = useState<Address | null>(null);
+  const [successPaymentCommission, setSuccessPaymentCommission] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -406,8 +414,15 @@ const Cart = () => {
   const handleSubmitOrder = async () => {
     if (!user) return;
     
+    // Валидация выбранных товаров
     if (selectedItems.size === 0) {
       toast.error('Выберите хотя бы один товар для оформления заказа');
+      return;
+    }
+    
+    // Валидация способа получения
+    if (!deliveryMethod) {
+      toast.error('Выберите способ получения');
       return;
     }
     
@@ -426,6 +441,12 @@ const Cart = () => {
       return;
     }
     
+    // Валидация способа оплаты
+    if (!paymentMethod) {
+      toast.error('Выберите способ оплаты');
+      return;
+    }
+    
     if (!agreeToTerms) {
       toast.error('Необходимо согласиться с условиями');
       return;
@@ -437,6 +458,20 @@ const Cart = () => {
         selectedItems.has(String(item.cart.productId))
       );
 
+      // Проверяем достаточность товаров на складе
+      for (const item of selectedCarts) {
+        if (item.product) {
+          const currentStock = item.product.stockQuantity || 0;
+          const orderedQuantity = item.cart.quantity;
+          
+          if (currentStock < orderedQuantity) {
+            toast.error(`Недостаточно товара "${item.product.nameProduct}". Доступно: ${currentStock}, запрошено: ${orderedQuantity}`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
       // Находим ID способа доставки и оплаты
       const deliveryType = deliveryTypes.find(dt => 
         deliveryMethod === 'courier' ? dt.deliveryTypeName.toLowerCase().includes('курьер') : dt.deliveryTypeName.toLowerCase().includes('самовывоз')
@@ -447,6 +482,7 @@ const Cart = () => {
 
       if (!deliveryType || !paymentType) {
         toast.error('Ошибка: не найден способ доставки или оплаты');
+        setIsSubmitting(false);
         return;
       }
 
@@ -456,37 +492,140 @@ const Cart = () => {
       const statusOrderId = newStatus?.id || 1;
 
       // Создаем заказ
-      const orderNumber = `ORDER-${Date.now()}`;
       const orderDate = new Date();
       const totalAmount = calculateTotal().total;
 
-      const order = await ordersApi.create({
-        orderNumber,
+      // Подготавливаем данные для создания заказа
+      const orderData: CreateOrder = {
+        orderNumber: 'TEMP', // Временное значение, триггер в БД заменит его на сгенерированный номер
         userId: user.id,
-        orderDate: orderDate.toISOString().split('T')[0],
-        totalAmount,
+        orderDate: orderDate.toISOString().slice(0, 19), // Полная дата-время в ISO формате для timestamp
+        totalAmount: Number(totalAmount.toFixed(2)), // Округляем до 2 знаков после запятой
         statusOrderId,
-        addressId: deliveryMethod === 'courier' ? selectedAddressId : null,
+        addressId: deliveryMethod === 'courier' && selectedAddressId ? selectedAddressId : undefined,
         deliveryTypesId: deliveryType.id!,
         paymentTypesId: paymentType.id!,
-      });
+        orderItems: selectedCarts.map(item => ({
+          productId: item.product.id,
+          quantity: item.cart.quantity,
+          unitPrice: item.product.price,
+        })),
+      };
 
-      // Создаем элементы заказа
-      await Promise.all(selectedCarts.map(item => {
-        if (item.product) {
-          return orderItemsApi.create({
-            orderId: order.id,
-            productId: item.product.id,
-            quantity: item.cart.quantity,
-            unitPrice: item.product.price,
-          });
+      console.log('Creating order with data:', orderData);
+
+      // Создаем заказ (orderNumber будет сгенерирован триггером в БД)
+      const order = await ordersApi.create(orderData);
+
+      // Проверяем, что заказ был создан и имеет ID
+      if (!order.id) {
+        throw new Error('Заказ не был создан (отсутствует ID)');
+      }
+
+      console.log('Order created successfully:', order);
+
+      // Загружаем полный заказ
+      const fullOrder = await ordersApi.getById(order.id);
+      
+      // Загружаем элементы заказа отдельно, так как они могут не приходить в ответе
+      let orderItemsWithProducts: OrderItem[] = [];
+      try {
+        const allOrderItems = await orderItemsApi.getAll();
+        const orderItems = allOrderItems.filter(item => item.orderId === order.id);
+        
+        // Загружаем информацию о продуктах для каждого элемента заказа
+        orderItemsWithProducts = await Promise.all(orderItems.map(async (item) => {
+          try {
+            const product = await productsApi.getById(item.productId);
+            return {
+              ...item,
+              product: {
+                id: product.id,
+                name: product.nameProduct,
+                imageUrl: product.imageUrl,
+              },
+            };
+          } catch (error) {
+            console.error(`Error loading product ${item.productId}:`, error);
+            return {
+              ...item,
+              product: {
+                id: item.productId,
+                name: 'Товар',
+                imageUrl: undefined,
+              },
+            };
+          }
+        }));
+      } catch (error) {
+        console.error('Error loading order items:', error);
+      }
+      
+      // Добавляем элементы заказа к заказу
+      const fullOrderWithItems = {
+        ...fullOrder,
+        orderItems: orderItemsWithProducts,
+      };
+
+      // Загружаем адрес, если есть
+      let orderAddress: Address | null = null;
+      if (fullOrderWithItems.addressId) {
+        try {
+          orderAddress = await addressesApi.getById(fullOrderWithItems.addressId);
+        } catch (error) {
+          console.error('Error loading address:', error);
         }
-      }));
+      }
+
+      // Отправляем чек на почту через EmailJS (опционально)
+      try {
+        console.log('📨 Подготовка данных для чека...');
+
+        // Проверяем, есть ли все нужные данные
+        if (!fullOrderWithItems || !user || !deliveryType || !paymentType) {
+          console.warn('❗ Пропущены обязательные данные для формирования чека. Пропускаем отправку.');
+          return;
+        }
+
+        const receiptData = {
+          order: fullOrderWithItems,
+          user: user,
+          items: fullOrderWithItems.orderItems || [],
+          deliveryType: deliveryType,
+          paymentType: paymentType,
+          address: orderAddress,
+          paymentCommission: calculateTotal().paymentCommission,
+        };
+
+        console.log('📦 Сформирован чек для отправки:', receiptData);
+
+        await sendReceiptEmail(receiptData);
+
+        console.log('✅ Чек успешно отправлен пользователю на почту:', user.email);
+
+      } catch (receiptError: any) {
+        console.error('❌ Ошибка при отправке чека через EmailJS:', receiptError);
+        if (receiptError?.message) {
+          console.error('Сообщение ошибки:', receiptError.message);
+        }
+        // Не прерываем процесс оформления заказа
+        console.warn('⚠️ Отправка чека не удалась, но заказ оформлен успешно.');
+      }
+
 
       // Удаляем товары из корзины после создания заказа
-      await Promise.all(selectedCarts.map(item => {
+      await Promise.all(selectedCarts.map(async (item) => {
         if (item.cart.id) {
-          return cartsApi.delete(item.cart.id);
+          try {
+            await cartsApi.delete(item.cart.id);
+          } catch (error: any) {
+            // Если корзина не найдена (404), это нормально - возможно уже удалена
+            if (error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+              console.log(`Cart ${item.cart.id} already deleted or not found`);
+            } else {
+              console.error(`Error deleting cart ${item.cart.id}:`, error);
+            }
+          }
         }
       }));
 
@@ -494,11 +633,39 @@ const Cart = () => {
         removeFromCart(String(item.cart.productId));
       });
 
-      toast.success('Заказ успешно оформлен!');
-      navigate('/account');
+      await loadCartData();
+
+      // Сохраняем данные для модального окна
+      setSuccessOrder(fullOrderWithItems);
+      setSuccessDeliveryType(deliveryType);
+      setSuccessPaymentType(paymentType);
+      setSuccessAddress(orderAddress);
+      setSuccessPaymentCommission(calculateTotal().paymentCommission);
+      setShowSuccessModal(true);
+
+      // Отправляем событие для обновления истории заказов
+      window.dispatchEvent(new Event('orderCreated'));
     } catch (error: any) {
       console.error('Error submitting order:', error);
-      toast.error(error.message || 'Ошибка при оформлении заказа');
+      
+      // Выводим более детальную информацию об ошибке
+      let errorMessage = 'Ошибка при оформлении заказа';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.title) {
+        errorMessage = error.title;
+      } else if (error?.detail) {
+        errorMessage = error.detail;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Если это ошибка БД, показываем более понятное сообщение
+      if (errorMessage.includes('DbUpdateException') || errorMessage.includes('entity changes')) {
+        errorMessage = 'Ошибка при сохранении заказа в базу данных. Проверьте корректность данных.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -1185,6 +1352,19 @@ const Cart = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Order Success Modal */}
+      {successOrder && (
+        <OrderSuccessModal
+          order={successOrder}
+          deliveryType={successDeliveryType}
+          paymentType={successPaymentType}
+          address={successAddress}
+          paymentCommission={successPaymentCommission}
+          open={showSuccessModal}
+          onOpenChange={setShowSuccessModal}
+        />
+      )}
     </div>
   );
 };

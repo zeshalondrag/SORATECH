@@ -33,13 +33,30 @@ export const AuthModal = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Валидация на клиенте
+    if (!formData.email || !formData.email.includes('@')) {
+      toast.error('Введите корректный email');
+      return;
+    }
+    
+    if (!formData.password || formData.password.length < 1) {
+      toast.error('Введите пароль');
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
       const response = await authApi.login({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
       });
+      
+      // Дополнительная проверка ответа
+      if (!response || !response.token) {
+        throw new Error('Неверный email или пароль');
+      }
       
       // Загружаем полные данные пользователя после логина
       try {
@@ -70,7 +87,11 @@ export const AuthModal = () => {
         agreeMarketing: false,
       });
     } catch (error: any) {
-      toast.error(error.message || 'Ошибка входа');
+      console.error('Login error:', error);
+      const errorMessage = error.message || 'Ошибка входа';
+      toast.error(errorMessage.includes('401') || errorMessage.includes('Unauthorized') 
+        ? 'Неверный email или пароль' 
+        : errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -78,25 +99,30 @@ export const AuthModal = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
-      if (formData.password !== formData.confirmPassword) {
-        toast.error('Пароли не совпадают');
-        return;
-      }
-      if (!formData.agreeTerms) {
-        toast.error('Необходимо принять условия соглашения');
-        return;
-      }
-
+  
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Пароли не совпадают');
+      return;
+    }
+    if (!formData.agreeTerms) {
+      toast.error('Необходимо принять условия соглашения');
+      return;
+    }
+  
     setIsLoading(true);
-
+  
     try {
       const response = await authApi.register({
-      email: formData.email,
+        email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         phone: formData.phone || undefined,
       });
+      
+      // Проверяем, что есть токен
+      if (!response || !response.token) {
+        throw new Error('Ошибка регистрации: не получен токен');
+      }
       
       // Загружаем полные данные пользователя после регистрации
       try {
@@ -104,6 +130,10 @@ export const AuthModal = () => {
         login(fullUser, response.token);
       } catch {
         // Если не удалось загрузить полные данные, используем упрощенную версию
+        if (!response.user) {
+          throw new Error('Ошибка регистрации: не получены данные пользователя');
+        }
+        
         const user: User = {
           id: response.user.id,
           roleId: 0,
@@ -127,27 +157,16 @@ export const AuthModal = () => {
         agreeMarketing: false,
       });
     } catch (error: any) {
+      console.error('Register error:', error);
       toast.error(error.message || 'Ошибка регистрации');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      await authApi.requestPasswordReset({ email: formData.email });
-      setResetEmail(formData.email);
-    closeAuthModal();
-      setIsResetPasswordModalOpen(true);
-      toast.success('Код отправлен на вашу почту');
-    } catch (error: any) {
-      toast.error(error.message || 'Ошибка отправки кода');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleOpenResetPassword = () => {
+    setResetEmail(formData.email);
+    setIsResetPasswordModalOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -155,8 +174,6 @@ export const AuthModal = () => {
       handleLogin(e);
     } else if (authModalView === 'register') {
       handleRegister(e);
-    } else if (authModalView === 'reset') {
-      handleResetPassword(e);
     }
   };
 
@@ -167,36 +184,11 @@ export const AuthModal = () => {
           <DialogTitle>
             {authModalView === 'login' && 'Личный кабинет'}
             {authModalView === 'register' && 'Регистрация'}
-            {authModalView === 'reset' && 'Забыли пароль'}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {authModalView === 'reset' ? (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Отправка...' : 'Отправить код'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => openAuthModal('login')}
-              >
-                Вернуться ко входу
-              </Button>
-            </>
-          ) : authModalView === 'register' ? (
+          {authModalView === 'register' ? (
             <>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -348,7 +340,7 @@ export const AuthModal = () => {
                   type="button"
                   variant="link"
                   className="p-0"
-                  onClick={() => openAuthModal('reset')}
+                  onClick={handleOpenResetPassword}
                 >
                   Забыли пароль?
                 </Button>

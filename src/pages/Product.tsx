@@ -229,7 +229,7 @@ const Product = () => {
     };
     try {
       await addToCart(productForCart);
-      toast.success('Товар добавлен в корзину');
+    toast.success('Товар добавлен в корзину');
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       toast.error('Ошибка при добавлении товара в корзину');
@@ -280,7 +280,7 @@ const Product = () => {
     };
     try {
       await toggleFavorite(productForStore);
-      toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
+    toast.success(isFavorite ? 'Удалено из избранного' : 'Добавлено в избранное');
     } catch (error: any) {
       // Ошибка уже обработана в toggleFavorite (открытие модального окна авторизации)
     }
@@ -342,7 +342,7 @@ const Product = () => {
   };
 
   const categorySlug = category ? categorySlugMap[category.id] || category.id.toString() : '';
-  
+
   const breadcrumbItems = [
     { label: 'Главная', href: '/' },
     { label: 'Категории', href: '/categories' },
@@ -388,28 +388,28 @@ const Product = () => {
 
             {/* Рейтинг и отзывы */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-5 w-5 ${
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-5 w-5 ${
                       i < Math.floor(rating)
-                        ? 'fill-primary text-primary'
-                        : 'text-muted'
-                    }`}
-                  />
-                ))}
+                          ? 'fill-primary text-primary'
+                          : 'text-muted'
+                      }`}
+                    />
+                  ))}
                 <span className="ml-2 font-medium">{rating.toFixed(1)}</span>
-              </div>
+                </div>
               <span className="text-muted-foreground text-sm">
                 {reviewCount} {reviewCount === 1 ? 'отзыв' : reviewCount < 5 ? 'отзыва' : 'отзывов'}
-              </span>
+                </span>
             </div>
 
             {/* Краткое описание */}
             <div>
               <h2 className="text-lg font-semibold mb-2">Кратко о товаре</h2>
-            </div>
+              </div>
 
             {/* Список характеристик */}
             {characteristics.length > 0 && (
@@ -432,7 +432,7 @@ const Product = () => {
                 )}
               </div>
             )}
-          </div>
+            </div>
 
           {/* Столбец 2: Цена и покупка */}
           <div className="space-y-4">
@@ -454,21 +454,21 @@ const Product = () => {
             </Button>
 
             {/* Кнопка в корзине */}
-            {!inCart ? (
-              <>
+                {!inCart ? (
+                  <>
                 {inStock ? (
-                  <Button onClick={handleAddToCart} size="lg" className="w-full">
-                    <ShoppingCart className="h-5 w-5 mr-2" />
-                    В корзину
-                  </Button>
+                    <Button onClick={handleAddToCart} size="lg" className="w-full">
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      В корзину
+                    </Button>
                 ) : (
                   <Button disabled size="lg" className="w-full">
                     Нет в наличии
-                  </Button>
+                    </Button>
                 )}
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
                 <Button
                   variant="destructive"
                   className="flex-1"
@@ -476,42 +476,42 @@ const Product = () => {
                 >
                   В корзине: {cartItem.quantity}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
+                    <Button
+                      variant="outline"
+                      size="icon"
                   onClick={handleDecreaseQuantity}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
                   onClick={handleIncreaseQuantity}
                   disabled={cartItem.quantity >= maxQuantity}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
 
             {/* Иконки сравнение и избранное */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
                 size="icon"
-                className="flex-1"
-                onClick={handleToggleFavorite}
-              >
+                    className="flex-1"
+                    onClick={handleToggleFavorite}
+                  >
                 <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current text-primary' : ''}`} /> В избранное
-              </Button>
-              <Button 
-                variant="outline" 
+                  </Button>
+                  <Button 
+                    variant="outline" 
                 size="icon"
-                className="flex-1"
-                onClick={handleToggleComparison}
-              >
+                    className="flex-1"
+                    onClick={handleToggleComparison}
+                  >
                 <GitCompare className={`h-5 w-5 ${isInComparison ? 'fill-current text-primary' : ''}`} /> Сравнить
-              </Button>
+                  </Button>
             </div>
 
             {/* Данные поставщика */}
@@ -635,9 +635,9 @@ const Product = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
+                <div className="text-center py-12 text-muted-foreground">
                     Отзывов пока нет
-                  </div>
+                </div>
                 )}
               </div>
 

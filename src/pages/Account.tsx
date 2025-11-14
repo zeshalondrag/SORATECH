@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '@/stores/useStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +17,9 @@ import { Footer } from '@/components/layout/Footer';
 export default function Account() {
   const { user, isAuthenticated, logout, setUser } = useStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('settings');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'settings');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +43,18 @@ export default function Account() {
     loadUserData();
   }, [isAuthenticated, navigate, setUser]);
 
+  useEffect(() => {
+    // Обновляем активный таб при изменении параметра URL
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -62,10 +76,15 @@ export default function Account() {
   };
 
   const getRoleLink = () => {
-    if (user?.role === 'Администратор') {
+    const roleName =
+      typeof user?.role === 'string'
+        ? user.role
+        : user?.role?.roleName;
+  
+    if (roleName === 'Администратор') {
       return { label: 'Панель администратора', path: '/admin' };
     }
-    if (user?.role === 'Менеджер') {
+    if (roleName === 'Менеджер') {
       return { label: 'Панель менеджера', path: '/manager' };
     }
     return null;
@@ -110,7 +129,7 @@ export default function Account() {
               <Button
                 variant={activeTab === 'settings' ? 'default' : 'ghost'}
                 className="w-full justify-start"
-                onClick={() => setActiveTab('settings')}
+                onClick={() => handleTabChange('settings')}
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Настройки профиля
@@ -118,7 +137,7 @@ export default function Account() {
               <Button
                 variant={activeTab === 'orders' ? 'default' : 'ghost'}
                 className="w-full justify-start"
-                onClick={() => setActiveTab('orders')}
+                onClick={() => handleTabChange('orders')}
               >
                 <Package className="h-4 w-4 mr-2" />
                 История заказов
@@ -126,7 +145,7 @@ export default function Account() {
               <Button
                 variant={activeTab === 'addresses' ? 'default' : 'ghost'}
                 className="w-full justify-start"
-                onClick={() => setActiveTab('addresses')}
+                onClick={() => handleTabChange('addresses')}
               >
                 <MapPin className="h-4 w-4 mr-2" />
                 Адрес доставки
@@ -134,7 +153,7 @@ export default function Account() {
               <Button
                 variant={activeTab === 'activity' ? 'default' : 'ghost'}
                 className="w-full justify-start"
-                onClick={() => setActiveTab('activity')}
+                onClick={() => handleTabChange('activity')}
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Активность в сообществе
@@ -156,7 +175,7 @@ export default function Account() {
         {/* Правый блок */}
         <div className="lg:col-span-3">
           <div className="bg-card border rounded-lg p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="settings" className="mt-0">
                 <ProfileSettings user={user} />
               </TabsContent>
