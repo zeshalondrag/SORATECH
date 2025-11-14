@@ -13,6 +13,7 @@ import { DeliveryAddresses } from '@/components/account/DeliveryAddresses';
 import { CommunityActivity } from '@/components/account/CommunityActivity';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { BackToTopButton } from '@/components/layout/BackToTopButton';
 
 export default function Account() {
   const { user, isAuthenticated, logout, setUser } = useStore();
@@ -194,6 +195,7 @@ export default function Account() {
         </div>
       </div>
       <Footer />
+      <BackToTopButton />
     </>
   );
 }

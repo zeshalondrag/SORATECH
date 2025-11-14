@@ -2,30 +2,33 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { BackToTopButton } from '@/components/layout/BackToTopButton';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Star, Heart, ShoppingCart, GitCompare, Minus, Plus, HelpCircle } from 'lucide-react';
+import { Star, Heart, ShoppingCart, GitCompare, Minus, Plus, HelpCircle, Pencil, Trash2 } from 'lucide-react';
 import { useStore } from '@/stores/useStore';
 import { toast } from 'sonner';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { Separator } from '@/components/ui/separator';
 import { ReviewModal } from '@/components/products/ReviewModal';
 import { ProductCard } from '@/components/products/ProductCard';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   productsApi, 
   categoriesApi, 
   productCharacteristicsApi, 
   characteristicsApi,
   reviewsApi,
-  ordersApi,
   suppliersApi,
+  adminUsersApi,
   type Product, 
   type Category,
   type Characteristic,
   type ProductCharacteristic,
   type Review,
-  type Order,
-  type Supplier
+  type Supplier,
+  type User
 } from '@/lib/api';
 import {
   Tooltip,
@@ -33,6 +36,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -56,7 +69,8 @@ const Product = () => {
     removeFromCart,
     addToRecentlyViewed, 
     recentlyViewed,
-    user
+    user,
+    isAuthenticated
   } = useStore();
   
   const [product, setProduct] = useState<Product | null>(null);
@@ -64,9 +78,12 @@ const Product = () => {
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [characteristics, setCharacteristics] = useState<CharacteristicWithDescription[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [usersMap, setUsersMap] = useState<Map<number, User>>(new Map());
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [deletingReview, setDeletingReview] = useState<Review | null>(null);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [rating, setRating] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
@@ -83,14 +100,13 @@ const Product = () => {
     setIsLoading(true);
     try {
       const productId = parseInt(id);
-      const [productData, allProducts, allCategories, allProductCharacteristics, allCharacteristics, allReviews, allOrders, allSuppliers] = await Promise.all([
+      const [productData, allProducts, allCategories, allProductCharacteristics, allCharacteristics, allReviews, allSuppliers] = await Promise.all([
         productsApi.getById(productId),
         productsApi.getAll(),
         categoriesApi.getAll(),
         productCharacteristicsApi.getAll(),
         characteristicsApi.getAll(),
         reviewsApi.getAll(),
-        user ? ordersApi.getAll() : Promise.resolve([]),
         suppliersApi.getAll()
       ]);
 
@@ -119,7 +135,25 @@ const Product = () => {
 
       // Загружаем отзывы товара
       const productReviews = allReviews.filter(r => r.productId === productId);
-      setReviews(productReviews);
+      
+      // Загружаем пользователей для отзывов
+      try {
+        const allUsers = await adminUsersApi.getAll();
+        const usersMapData = new Map<number, User>();
+        allUsers.forEach(u => usersMapData.set(u.id, u));
+        setUsersMap(usersMapData);
+        
+        // Связываем пользователей с отзывами
+        const reviewsWithUsers = productReviews.map(review => ({
+          ...review,
+          user: review.user || usersMapData.get(review.userId)
+        }));
+        setReviews(reviewsWithUsers);
+      } catch (error) {
+        // Если не удалось загрузить пользователей, используем отзывы как есть
+        console.warn('Could not load users for reviews:', error);
+        setReviews(productReviews);
+      }
 
       // Вычисляем рейтинг и количество отзывов
       let calculatedRating = 0;
@@ -137,13 +171,17 @@ const Product = () => {
       // Вычисляем наличие товара
       const calculatedInStock = (productData.stockQuantity || 0) > 0;
 
-      // Проверяем, купил ли пользователь товар
-      if (user) {
-        const userOrders = allOrders.filter(o => o.userId === user.id);
-        const purchased = userOrders.some(order => 
-          order.orderItems?.some(item => item.productId === productId)
-        );
-        setHasPurchased(purchased);
+      // Проверяем, может ли пользователь оставить отзыв (купил ли товар со статусом "Доставлен")
+      if (user && isAuthenticated) {
+        try {
+          const checkResult = await reviewsApi.check(productId);
+          // canReview уже учитывает hasPurchased и отсутствие существующего отзыва
+          setHasPurchased(checkResult.canReview);
+        } catch (error: any) {
+          console.error('Error checking review eligibility:', error);
+          // Если ошибка авторизации, просто не разрешаем оставлять отзыв
+          setHasPurchased(false);
+        }
       } else {
         setHasPurchased(false);
       }
@@ -309,22 +347,61 @@ const Product = () => {
       toast.error('Необходимо войти в систему');
       return;
     }
-    if (!hasPurchased) {
-      toast.error('Вы можете оставить отзыв только после покупки товара');
+    if (editingReview) {
+      // Редактирование существующего отзыва
+      try {
+        await reviewsApi.update(editingReview.id, {
+          rating,
+          commentText: comment
+        });
+        toast.success('Отзыв успешно обновлен');
+        setEditingReview(null);
+        setIsReviewModalOpen(false);
+        loadProductData();
+      } catch (error: any) {
+        toast.error('Ошибка при обновлении отзыва');
+      }
+    } else {
+      // Создание нового отзыва
+      if (!hasPurchased) {
+        toast.error('Вы можете оставить отзыв только после покупки товара');
+        return;
+      }
+      try {
+        await reviewsApi.create({
+          productId: product.id,
+          userId: user.id,
+          rating,
+          commentText: comment
+        });
+        toast.success('Отзыв успешно добавлен');
+        setIsReviewModalOpen(false);
+        loadProductData();
+      } catch (error: any) {
+        toast.error('Ошибка при добавлении отзыва');
+      }
+    }
+  };
+
+  const handleEditReview = (review: Review) => {
+    if (!user || Number(review.userId) !== Number(user.id)) {
+      toast.error('Вы можете редактировать только свои отзывы');
       return;
     }
+    setEditingReview(review);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleDeleteReview = async () => {
+    if (!deletingReview || !user) return;
+    
     try {
-      await reviewsApi.create({
-        productId: product.id,
-        userId: user.id,
-        rating,
-        commentText: comment
-      });
-      toast.success('Отзыв успешно добавлен');
-      setIsReviewModalOpen(false);
+      await reviewsApi.delete(deletingReview.id);
+      toast.success('Отзыв успешно удален');
+      setDeletingReview(null);
       loadProductData();
     } catch (error: any) {
-      toast.error('Ошибка при добавлении отзыва');
+      toast.error('Ошибка при удалении отзыва');
     }
   };
 
@@ -370,11 +447,11 @@ const Product = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-12">
           {/* Gallery */}
           <div>
-            <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-4">
+            <div className="aspect-square rounded-lg overflow-hidden mb-4 border border-muted">
               <img
                 src={product.imageUrl || '/placeholder.svg'}
                 alt={product.nameProduct}
-                className="w-full h-full object-cover"
+                className="p-4 w-full h-full object-cover"
               />
             </div>
           </div>
@@ -442,14 +519,45 @@ const Product = () => {
                 {product.price.toLocaleString('ru-RU')} ₽
               </div>
               {inStock ? (
-                <Badge variant="default">В наличии</Badge>
+                <Badge variant="default">В наличии: {product.stockQuantity} {product.stockQuantity === 1 ? 'шт.' : product.stockQuantity < 5 ? 'шт.' : 'шт.'}</Badge>
               ) : (
                 <Badge variant="secondary">Нет в наличии</Badge>
               )}
             </div>
 
             {/* Кнопка быстрый заказ */}
-            <Button variant="secondary" size="lg" className="w-full">
+            <Button 
+              variant="secondary" 
+              size="lg" 
+              className="w-full"
+              onClick={async () => {
+                if (!inStock) {
+                  toast.error('Товар отсутствует в наличии');
+                  return;
+                }
+                const productForCart = {
+                  ...product,
+                  id: String(product.id),
+                  name: product.nameProduct,
+                  category: category?.nameCategory || '',
+                  image: product.imageUrl || '/placeholder.svg',
+                  images: [product.imageUrl || '/placeholder.svg'],
+                  specs: {},
+                  rating: rating,
+                  reviewCount: reviewCount,
+                  inStock: inStock,
+                  categoryId: String(product.categoryId)
+                };
+                try {
+                  await addToCart(productForCart);
+                  toast.success('Товар добавлен в корзину');
+                  navigate('/cart');
+                } catch (error: any) {
+                  console.error('Error adding to cart:', error);
+                  toast.error('Ошибка при добавлении товара в корзину');
+                }
+              }}
+            >
               Быстрый заказ
             </Button>
 
@@ -581,16 +689,26 @@ const Product = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-sm text-muted-foreground">
-              * Проверяйте полное описание на официальном сайте производителя
+            <p className="text-sm text-muted-foreground py-4">
+              * Уважаемые покупатели! Пожалуйста, проверяйте описание товара на официальном сайте производителя перед покупкой. Уточняйте спецификацию, наличие на складе и цену у менеджеров интернет-магазина. Внешний вид, комплектация и характеристики могут быть изменены производителем без предварительного уведомления.
             </p>
           </TabsContent>
 
           <TabsContent value="description">
             <div className="prose max-w-none">
-              <p>{product.description}</p>
-              <p className="text-sm text-muted-foreground mt-4">
-                * Проверяйте полное описание на официальном сайте производителя
+              {product.description ? (
+                product.description.split('\n').map((paragraph, index) => (
+                  paragraph.trim() && (
+                    <p key={index} className={index > 0 ? 'mt-4' : ''}>
+                      {paragraph.trim()}
+                    </p>
+                  )
+                ))
+              ) : (
+                <p className="text-muted-foreground">Описание отсутствует</p>
+              )}
+              <p className="text-sm text-muted-foreground mt-4 py-8">
+                * Уважаемые покупатели! Пожалуйста, проверяйте описание товара на официальном сайте производителя перед покупкой. Уточняйте спецификацию, наличие на складе и цену у менеджеров интернет-магазина. Внешний вид, комплектация и характеристики могут быть изменены производителем без предварительного уведомления.
               </p>
             </div>
           </TabsContent>
@@ -600,40 +718,100 @@ const Product = () => {
               {/* Reviews List */}
               <div className="lg:col-span-2 space-y-4">
                 {reviews.length > 0 ? (
-                  reviews.map((review) => (
-                    <div key={review.id} className="border rounded-lg p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="font-medium mb-1">
-                            {review.user?.nickname || review.user?.firstName || 'Пользователь'}
+                  reviews.map((review) => {
+                    const isUserReview = user && Number(review.userId) === Number(user.id);
+                    const reviewUser = review.user || usersMap.get(review.userId);
+                    const userName = reviewUser?.nickname || reviewUser?.firstName || 'Пользователь';
+                    const userInitials = userName.charAt(0).toUpperCase();
+                    
+                    return (
+                      <div key={review.id} className="border rounded-lg p-6 bg-card hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-4">
+                          {/* Аватарка */}
+                          <Avatar className="h-12 w-12 border-2">
+                            <AvatarImage src={(reviewUser as any)?.avatarUrl} alt={userName} />
+                            <AvatarFallback className="font-semibold">
+                              {userInitials}
+                            </AvatarFallback>
+                          </Avatar>
+                          
+                          {/* Основной контент */}
+                          <div className="flex-1 min-w-0">
+                            {/* Заголовок с никнеймом, датой и действиями */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-semibold text-base truncate">
+                                    {userName}
+                                  </h4>
+                                  {isUserReview && (
+                                    <Badge variant="default" className="text-xs">
+                                      Ваш отзыв
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span>{format(new Date(review.reviewDate), 'dd MMMM yyyy', { locale: ru })}</span>
+                                </div>
+                              </div>
+                              
+                              {/* Иконки редактирования и удаления */}
+                              {isUserReview && (
+                                <div className="flex items-center gap-1 ml-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleEditReview(review)}
+                                    title="Редактировать отзыв"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setDeletingReview(review)}
+                                    title="Удалить отзыв"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Рейтинг */}
+                            <div className="flex items-center gap-1 mb-3">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(Number(review.rating))
+                                      ? 'fill-primary text-primary'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            
+                            {/* Товар */}
+                            {review.product && (
+                              <div className="text-sm text-muted-foreground mb-3 pb-3 border-b">
+                                <span className="font-medium">Товар:</span> {review.product.name || product?.nameProduct || 'Товар'}
+                              </div>
+                            )}
+                            
+                            {/* Комментарий */}
+                            {review.commentText && (
+                              <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                                {review.commentText}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1 mb-2">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < Math.floor(Number(review.rating))
-                                    ? 'fill-primary text-primary'
-                                    : 'text-muted'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(review.reviewDate), 'dd MMMM yyyy', { locale: ru })}
                         </div>
                       </div>
-                      {review.product && (
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Товар: {review.product.name || product.nameProduct}
-                        </div>
-                      )}
-                      {review.commentText && (
-                        <p className="text-sm">{review.commentText}</p>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                 <div className="text-center py-12 text-muted-foreground">
                     Отзывов пока нет
@@ -691,6 +869,7 @@ const Product = () => {
                         toast.error('Вы можете оставить отзыв только после покупки товара');
                         return;
                       }
+                      setEditingReview(null);
                       setIsReviewModalOpen(true);
                     }}
                     className="w-full"
@@ -722,30 +901,53 @@ const Product = () => {
         )}
 
         {/* Recently Viewed */}
-        {recentlyViewed.length > 1 && (
+        {isAuthenticated && recentlyViewed.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold mb-6">Вы недавно смотрели</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {recentlyViewed
-                .filter((p) => String(p.id) !== String(product.id))
-                .slice(0, 4)
-                .map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
+            <h2 className="text-3xl font-bold mb-4">Вы недавно смотрели</h2>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {recentlyViewed.slice(0, 5).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           </section>
         )}
       </main>
 
       <Footer />
+      <BackToTopButton />
       
       {/* Review Modal */}
       <ReviewModal
         open={isReviewModalOpen}
-        onOpenChange={setIsReviewModalOpen}
+        onOpenChange={(open) => {
+          setIsReviewModalOpen(open);
+          if (!open) {
+            setEditingReview(null);
+          }
+        }}
         productName={product.nameProduct}
         onSubmit={handleReviewSubmit}
+        review={editingReview}
       />
+
+      {/* Delete Review Dialog */}
+      <AlertDialog open={!!deletingReview} onOpenChange={(open) => !open && setDeletingReview(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить отзыв?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReview} className="bg-destructive text-destructive-foreground">
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

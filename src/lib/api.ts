@@ -432,6 +432,10 @@ export const reviewsApi = {
       method: 'DELETE',
     });
   },
+
+  check: async (productId: number): Promise<{ canReview: boolean; hasPurchased: boolean; hasExistingReview: boolean }> => {
+    return apiRequest<{ canReview: boolean; hasPurchased: boolean; hasExistingReview: boolean }>(`/api/Reviews/check/${productId}`);
+  },
 };
 
 // Admin Panel Types

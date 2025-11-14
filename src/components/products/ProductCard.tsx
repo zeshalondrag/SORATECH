@@ -46,7 +46,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
       setRating(product.rating || 0);
       setReviewCount(product.reviewCount || 0);
     }
-  }, [productId, isApiProduct]);
+  }, [productId, isApiProduct, product]);
 
   const loadCharacteristics = async () => {
     if (!isApiProduct) return;
@@ -74,12 +74,17 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
     if (!isApiProduct) return;
     try {
       const allReviews = await reviewsApi.getAll();
-      const productReviews = allReviews.filter((r) => r.productId === productId);
+      // Приводим productId к числу для корректного сравнения
+      const numericProductId = typeof productId === 'string' ? parseInt(productId, 10) : productId;
+      const productReviews = allReviews.filter((r) => Number(r.productId) === numericProductId);
       setReviewCount(productReviews.length);
       
+      // Вычисляем рейтинг
       if (productReviews.length > 0) {
         const avgRating = productReviews.reduce((sum, r) => sum + Number(r.rating), 0) / productReviews.length;
         setRating(avgRating);
+      } else {
+        setRating(0);
       }
     } catch (error) {
       console.error('Error loading reviews:', error);

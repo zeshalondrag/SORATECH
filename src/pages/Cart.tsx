@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { BackToTopButton } from '@/components/layout/BackToTopButton';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -699,11 +700,10 @@ const Cart = () => {
       <Header />
 
       <main className="flex-1 container mx-auto px-6 md:px-12 py-8">
+      {cartItems.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            {cartItems.length > 0 ? (
-              <>
                 {/* Header with Icons */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1135,116 +1135,113 @@ const Cart = () => {
                     </div>
                   </CardContent>
                 </Card>
-              </>
-            ) : (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <div className="flex flex-col items-center gap-4">
-                    <ShoppingCart className="h-16 w-16 text-muted-foreground" />
-                    <div>
-                      <p className="text-lg font-semibold mb-2">
-                        В корзине пока ничего нет
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Нажмите на иконку корзины для добавления в корзину
-                      </p>
-                    </div>
-                    <Button onClick={() => navigate('/categories')} variant="outline">
-                      Перейти в каталог
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
-          {/* Right Column - Sticky Summary */}
-          {cartItems.length > 0 && (
-            <div className="lg:col-span-1">
-              <Card className="sticky top-4">
-                <CardContent className="p-6 space-y-6">
-                {/* Summary */}
-                <div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Ваши товары ({selectedCount})</span>
-                      <span>{productsTotal.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Способ получения</span>
-                      <span className="text-sm">
-                        {deliveryMethod === 'courier' ? 'Доставка курьером' : 'Самовывоз'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Стоимость доставки</span>
-                      <span>{deliveryCost === 0 ? 'Бесплатно' : `${deliveryCost.toLocaleString('ru-RU')} ₽`}</span>
-                    </div>
-                    {paymentCommission > 0 && (
-                      <div className="flex justify-between">
-                        <span>Комиссия (2%)</span>
-                        <span>{paymentCommission.toLocaleString('ru-RU')} ₽</span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Итого к оплате:</span>
-                      <span>{total.toLocaleString('ru-RU')} ₽</span>
-                    </div>
-                  </div>
+          {/* Right Column - Sticky Summary */}            <div className="lg:col-span-1">
+          <Card className="sticky top-20">
+            <CardContent className="p-6 space-y-6">
+            {/* Summary */}
+            <div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Ваши товары ({selectedCount})</span>
+                  <span>{productsTotal.toLocaleString('ru-RU')} ₽</span>
                 </div>
-
+                <div className="flex justify-between">
+                  <span>Способ получения</span>
+                  <span className="text-sm">
+                    {deliveryMethod === 'courier' ? 'Доставка курьером' : 'Самовывоз'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Стоимость доставки</span>
+                  <span>{deliveryCost === 0 ? 'Бесплатно' : `${deliveryCost.toLocaleString('ru-RU')} ₽`}</span>
+                </div>
+                {paymentCommission > 0 && (
+                  <div className="flex justify-between">
+                    <span>Комиссия (2%)</span>
+                    <span>{paymentCommission.toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                )}
                 <Separator />
-
-                {/* Agreements */}
-                <div className="space-y-3">
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="newsletter"
-                      checked={agreeToNewsletter}
-                      onCheckedChange={(checked) => setAgreeToNewsletter(checked === true)}
-                    />
-                    <Label htmlFor="newsletter" className="text-sm cursor-pointer">
-                      Подтверждаю согласие на получение рекламных и информационных материалов
-                    </Label>
-                  </div>
-
-                    {/* Submit Button */}
-                    <Button
-                    className="w-full"
-                    onClick={handleSubmitOrder}
-                    disabled={
-                        !agreeToTerms ||
-                        selectedItems.size === 0 ||
-                        (deliveryMethod === 'courier' && !selectedAddressId) ||
-                        !deliveryDate ||
-                        (deliveryMethod === 'courier' && !deliveryTime) ||
-                        isSubmitting
-                    }
-                    >
-                    {isSubmitting ? 'Оформление...' : 'Оформить заказ'}
-                    </Button>
-
-
-                  <div className="flex items-start space-x-2">
-                    <Checkbox
-                      id="terms"
-                      checked={agreeToTerms}
-                      onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
-                    />
-                    <Label htmlFor="terms" className="text-sm cursor-pointer">
-                      Принимаю условия оферты, а также даю согласие на обработку персональных данных на условиях политики конфиденциальности *
-                    </Label>
-                  </div>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Итого к оплате:</span>
+                  <span>{total.toLocaleString('ru-RU')} ₽</span>
                 </div>
-                </CardContent>
-              </Card>
+              </div>
             </div>
-          )}
+
+            <Separator />
+
+            {/* Agreements */}
+            <div className="space-y-3">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="newsletter"
+                  checked={agreeToNewsletter}
+                  onCheckedChange={(checked) => setAgreeToNewsletter(checked === true)}
+                />
+                <Label htmlFor="newsletter" className="text-sm cursor-pointer">
+                  Подтверждаю согласие на получение рекламных и информационных материалов
+                </Label>
+              </div>
+
+                {/* Submit Button */}
+                <Button
+                className="w-full"
+                onClick={handleSubmitOrder}
+                disabled={
+                    !agreeToTerms ||
+                    selectedItems.size === 0 ||
+                    (deliveryMethod === 'courier' && !selectedAddressId) ||
+                    !deliveryDate ||
+                    (deliveryMethod === 'courier' && !deliveryTime) ||
+                    isSubmitting
+                }
+                >
+                {isSubmitting ? 'Оформление...' : 'Оформить заказ'}
+                </Button>
+
+
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="terms"
+                  checked={agreeToTerms}
+                  onCheckedChange={(checked) => setAgreeToTerms(checked === true)}
+                />
+                <Label htmlFor="terms" className="text-sm cursor-pointer">
+                  Принимаю условия оферты, а также даю согласие на обработку персональных данных на условиях политики конфиденциальности *
+                </Label>
+              </div>
+            </div>
+            </CardContent>
+          </Card>
         </div>
+        </div>
+        ) : (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <ShoppingCart className="h-16 w-16 text-muted-foreground" />
+                <div>
+                  <p className="text-lg font-semibold mb-2">
+                    В корзине пока ничего нет
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Нажмите на иконку корзины для добавления в корзину
+                  </p>
+                </div>
+                <Button onClick={() => navigate('/categories')} variant="outline">
+                  Перейти в каталог
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <Footer />
+      <BackToTopButton />
 
       {/* Clear Cart Dialog */}
       <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>

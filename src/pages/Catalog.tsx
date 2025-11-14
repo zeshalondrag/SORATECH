@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { BackToTopButton } from '@/components/layout/BackToTopButton';
 import { ProductCard } from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -237,6 +238,7 @@ const Catalog = () => {
       </main>
 
       <Footer />
+      <BackToTopButton />
     </div>
   );
 };

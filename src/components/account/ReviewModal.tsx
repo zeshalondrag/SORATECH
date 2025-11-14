@@ -26,8 +26,8 @@ export const ReviewModal = ({ open, onOpenChange, review, onSuccess }: ReviewMod
 
   useEffect(() => {
     if (review) {
-      setRating(review.rating);
-      setComment(review.comment);
+      setRating(Number(review.rating));
+      setComment(review.commentText || review.comment || '');
     } else {
       setRating(5);
       setComment('');
@@ -46,7 +46,10 @@ export const ReviewModal = ({ open, onOpenChange, review, onSuccess }: ReviewMod
 
     try {
       if (review) {
-        await reviewsApi.update(review.id, { rating, comment });
+        await reviewsApi.update(review.id, { 
+          rating, 
+          commentText: comment 
+        });
         toast.success('Отзыв обновлен');
       } else {
         // Для создания отзыва нужны productId и userId

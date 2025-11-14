@@ -29,7 +29,7 @@ export const OrderHistory = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [statusOrders, setStatusOrders] = useState<StatusOrder[]>([]);
-  const itemsPerPage = 5;
+  const itemsPerPage = 3;
 
   // Функция загрузки заказов
   const loadOrders = useCallback(async () => {
@@ -107,6 +107,13 @@ export const OrderHistory = () => {
         };
       }));
       
+      // Сортируем заказы по дате (новые сначала)
+      userOrders.sort((a, b) => {
+        const dateA = new Date(a.orderDate).getTime();
+        const dateB = new Date(b.orderDate).getTime();
+        return dateB - dateA; // Сначала новые
+      });
+      
       console.log('Отфильтрованные заказы пользователя с товарами:', userOrders);
       setOrders(userOrders);
       setFilteredOrders(userOrders);
@@ -150,7 +157,13 @@ export const OrderHistory = () => {
 
   const filterOrders = () => {
     if (!searchQuery.trim()) {
-      setFilteredOrders(orders);
+      // При отсутствии поиска сохраняем сортировку по дате
+      const sorted = [...orders].sort((a, b) => {
+        const dateA = new Date(a.orderDate).getTime();
+        const dateB = new Date(b.orderDate).getTime();
+        return dateB - dateA; // Сначала новые
+      });
+      setFilteredOrders(sorted);
       setCurrentPage(1);
       return;
     }
@@ -163,6 +176,13 @@ export const OrderHistory = () => {
         item.productId.toString().toLowerCase().includes(query)
       );
       return orderIdMatch || productMatch;
+    });
+
+    // Сортируем отфильтрованные заказы по дате (новые сначала)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.orderDate).getTime();
+      const dateB = new Date(b.orderDate).getTime();
+      return dateB - dateA; // Сначала новые
     });
 
     setFilteredOrders(filtered);

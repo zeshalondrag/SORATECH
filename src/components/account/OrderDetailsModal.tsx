@@ -13,6 +13,7 @@ import { ru } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
 import { deliveryTypesApi, paymentTypesApi, addressesApi, productsApi, orderItemsApi } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Package, MapPin, CreditCard, Calendar, ShoppingBag } from 'lucide-react';
 
 interface OrderDetailsModalProps {
   order: Order;
@@ -98,147 +99,154 @@ export const OrderDetailsModal = ({ order, open, onOpenChange }: OrderDetailsMod
     ? order.totalAmount * 0.02 
     : 0;
 
-  // Вычисляем общее количество товаров
-  const totalItemsCount = orderItemsWithProducts.reduce((sum, item) => sum + item.quantity, 0);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="text-center pb-4 border-b">
-          <DialogTitle className="text-2xl text-center font-bold text-gray-900 dark:text-gray-100">
-            Подробности заказа {order.orderNumber || `#${order.id}`}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+        {/* Заголовок */}
+        <div className="p-6 border-b">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-bold">
+              Подробности заказа {order.orderNumber || `#${order.id}`}
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 dark:border-gray-400 mx-auto mb-2"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
             <p className="text-sm text-muted-foreground">Загрузка данных...</p>
           </div>
         ) : (
-          <div className="space-y-6 py-2">
-            {/* Информация о заказе */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-                <p className="text-xs text-muted-foreground mb-1">Дата оформления</p>
-                <p className="font-semibold text-sm text-gray-900 dark:text-white">
-                  {format(new Date(order.orderDate), 'dd MMMM yyyy, HH:mm', { locale: ru })}
-                </p>
-              </div>
-              <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-                <p className="text-xs text-muted-foreground mb-1">Способ доставки</p>
-                <p className="font-semibold text-sm text-gray-900 dark:text-white">{deliveryType?.deliveryTypeName || 'Не указан'}</p>
-              </div>
+          <div className="p-6 space-y-6">
+            {/* Номер заказа - выделенный блок */}
+            <div className="border-2 rounded-xl p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">Номер заказа</p>
+              <p className="text-3xl font-bold">{order.orderNumber || `#${order.id}`}</p>
             </div>
 
-            <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-              <p className="text-xs text-muted-foreground mb-1">Адрес доставки</p>
-              <p className="font-semibold text-sm text-gray-900 dark:text-white">
-                {address ? (
-                  `${address.street}, ${address.city}, ${address.postalCode}`
-                ) : (
-                  'ул. Примерная, д. 1 (самовывоз)'
-                )}
-              </p>
-            </div>
+            {/* Детали заказа */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Информация о заказе */}
+              <Card className="border-2">
+                <CardContent className="p-5 space-y-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Информация о заказе
+                  </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-                <p className="text-xs text-muted-foreground mb-1">Способ оплаты</p>
-                <p className="font-semibold text-sm text-gray-900 dark:text-white">{paymentType?.paymentTypeName || 'Не указан'}</p>
-              </div>
-              {paymentCommission > 0 && (
-                <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-                  <p className="text-xs text-muted-foreground mb-1">Комиссия (2%)</p>
-                  <p className="font-semibold text-sm text-gray-900 dark:text-white">{paymentCommission.toLocaleString('ru-RU')} ₽</p>
-                </div>
-              )}
-            </div>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Дата заказа</p>
+                        <p className="font-medium text-sm">
+                          {format(new Date(order.orderDate), 'dd MMMM yyyy, HH:mm', { locale: ru })}
+                        </p>
+                      </div>
+                    </div>
 
-            <Separator />
+                    <Separator />
 
-            {/* Товары */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-base font-semibold">Купленные товары</p>
-                <p className="text-sm text-muted-foreground">
-                  Всего: {totalItemsCount} {totalItemsCount === 1 ? 'товар' : totalItemsCount < 5 ? 'товара' : 'товаров'}
-                </p>
-              </div>
-              <div className="space-y-3">
-                {orderItemsWithProducts.length > 0 ? (
-                  orderItemsWithProducts.map((item) => {
-                    const product = item.product;
-                    const itemTotal = item.unitPrice * item.quantity;
-                    
-                    return (
-                      <Card key={item.id} className="hover:shadow-md border-gray-200 dark:border-[#262626]">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            {/* Картинка товара */}
-                            <Avatar className="h-16 w-16 rounded-lg border-2 border-gray-200 dark:border-[#262626]">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Способ доставки</p>
+                        <p className="font-medium text-sm">
+                          {deliveryType?.deliveryTypeName || 'Не указан'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {address ? (
+                            `${address.street}, ${address.city}, ${address.postalCode}`
+                          ) : (
+                            'ул. Примерная, д. 1 (самовывоз)'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-start gap-3">
+                      <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-1">Способ оплаты</p>
+                        <p className="font-medium text-sm">
+                          {paymentType?.paymentTypeName || 'Не указан'}
+                        </p>
+                        {paymentCommission > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Комиссия (2%): {paymentCommission.toLocaleString('ru-RU')} ₽
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Товары */}
+              <Card className="border-2">
+                <CardContent className="p-5 space-y-4">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <ShoppingBag className="h-5 w-5 text-primary" />
+                    Товары в заказе
+                  </h3>
+
+                  {orderItemsWithProducts.length > 0 ? (
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                      {orderItemsWithProducts.map((item) => {
+                        const product = item.product;
+                        const itemTotal = item.unitPrice * item.quantity;
+                        
+                        return (
+                          <div key={item.id} className="flex gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                            <Avatar className="h-12 w-12 rounded-md border">
                               <AvatarImage 
                                 src={product?.imageUrl} 
                                 alt={product?.nameProduct || 'Товар'}
-                                className="object-cover"
                               />
-                              <AvatarFallback className="rounded-lg bg-gray-100 dark:bg-gray-800">
+                              <AvatarFallback className="rounded-md">
                                 {product?.nameProduct?.charAt(0) || 'Т'}
                               </AvatarFallback>
                             </Avatar>
-                            
-                            {/* Информация о товаре */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-sm mb-1 truncate">
-                                    {product?.nameProduct || 'Товар'}
-                                  </p>
-                                  {product?.article && (
-                                    <p className="text-xs text-muted-foreground mb-2">
-                                      Артикул: {product.article}
-                                    </p>
-                                  )}
-                                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                                    <span className="text-muted-foreground">
-                                      Цена: <span className="font-medium text-gray-900 dark:text-gray-100">{item.unitPrice.toLocaleString('ru-RU')} ₽</span>
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      Кол-во: <span className="font-medium text-gray-900 dark:text-gray-100">{item.quantity}</span>
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-                                    {itemTotal.toLocaleString('ru-RU')} ₽
-                                  </p>
-                                </div>
+                              <p className="font-medium text-sm truncate">
+                                {product?.nameProduct || 'Товар'}
+                              </p>
+                              {product?.article && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Артикул: {product.article}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-xs text-muted-foreground">
+                                  {item.unitPrice.toLocaleString('ru-RU')} ₽ × {item.quantity}
+                                </p>
+                                <p className="font-semibold text-sm">
+                                  {itemTotal.toLocaleString('ru-RU')} ₽
+                                </p>
                               </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">Товары загружаются...</p>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Товары загружаются...</p>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-base font-semibold">Итого к оплате:</span>
+                    <Badge variant="default" className="text-lg font-bold px-3 py-1">
+                      {order.totalAmount.toLocaleString('ru-RU')} ₽
+                    </Badge>
                   </div>
-                )}
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <Separator />
-
-            {/* Итого */}
-            <div className="rounded-lg p-4 bg-gray-100 dark:bg-[#262626]">
-              <div className="flex items-center justify-between">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">Итоговая сумма:</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {order.totalAmount.toLocaleString('ru-RU')} ₽
-                </p>
-              </div>
-            </div>
           </div>
         )}
       </DialogContent>

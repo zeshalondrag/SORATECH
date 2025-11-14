@@ -1,21 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { Review } from '@/lib/api';
 
 interface ReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productName: string;
   onSubmit: (rating: number, comment: string) => void;
+  review?: Review | null;
 }
 
-export const ReviewModal = ({ open, onOpenChange, productName, onSubmit }: ReviewModalProps) => {
+export const ReviewModal = ({ open, onOpenChange, productName, onSubmit, review }: ReviewModalProps) => {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    if (review) {
+      setRating(Number(review.rating));
+      setComment(review.commentText || '');
+    } else {
+      setRating(0);
+      setComment('');
+    }
+  }, [review, open]);
 
   const handleSubmit = () => {
     if (rating === 0) {
@@ -28,10 +40,12 @@ export const ReviewModal = ({ open, onOpenChange, productName, onSubmit }: Revie
     }
 
     onSubmit(rating, comment);
-    setRating(0);
-    setComment('');
+    if (!review) {
+      setRating(0);
+      setComment('');
+    }
     onOpenChange(false);
-    toast.success('Отзыв успешно добавлен');
+    toast.success(review ? 'Отзыв успешно обновлен' : 'Отзыв успешно добавлен');
   };
 
   const isValid = rating > 0 && comment.trim().length >= 20;
@@ -40,7 +54,7 @@ export const ReviewModal = ({ open, onOpenChange, productName, onSubmit }: Revie
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Ваш отзыв о товаре</DialogTitle>
+          <DialogTitle>{review ? 'Редактировать отзыв' : 'Ваш отзыв о товаре'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -95,10 +109,10 @@ export const ReviewModal = ({ open, onOpenChange, productName, onSubmit }: Revie
               disabled={!isValid}
               className="w-full"
             >
-              Отправить отзыв
+              {review ? 'Сохранить изменения' : 'Отправить отзыв'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Нажимая "Отправить отзыв", вы соглашаетесь с правилами публикации пользовательского контента
+              Нажимая "{review ? 'Сохранить изменения' : 'Отправить отзыв'}", вы соглашаетесь с правилами публикации пользовательского контента
             </p>
           </div>
         </div>
