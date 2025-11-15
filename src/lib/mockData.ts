@@ -163,15 +163,15 @@ export const products: Product[] = [
 export const heroSlides = [
   {
     id: 1,
-    title: 'Новое поколение процессоров Intel',
-    subtitle: 'Core i9-13900K уже в продаже',
+    title: 'AMD представила Ryzen 5 7500X3D',
+    subtitle: 'Доступный игровой процессор с 3D V-Cache ',
     image: '/placeholder.svg',
     cta: 'Купить сейчас',
     link: '/product/1',
   },
   {
     id: 2,
-    title: 'RTX 40 Series',
+    title: 'RTX 50 Series',
     subtitle: 'Максимальная производительность в играх',
     image: '/placeholder.svg',
     cta: 'Подробнее',

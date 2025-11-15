@@ -136,8 +136,146 @@ export const AdminEntityModal = ({
       }
 
       if (item) {
-        await currentConfig.api.update(item.id, submitData);
-        toast.success('Запись обновлена');
+        // Специальная обработка для пользователей - изменение роли через отдельный endpoint
+        if (entity === 'users' && submitData.roleId !== undefined) {
+          const { adminUsersApi } = await import('@/lib/api');
+          await adminUsersApi.updateRole(item.id, submitData.roleId);
+          toast.success('Роль пользователя обновлена');
+        } else {
+          // Для обновления формируем объект только с нужными полями
+          // Берем поля из формы и добавляем обязательные поля из исходного объекта
+          const updateData: Record<string, any> = {
+            id: item.id,  // Требование API
+          };
+          
+          // Для некоторых сущностей нужно добавить обязательные поля, которых может не быть в форме
+          // но которые нужны для обновления
+          if (entity === 'categories') {
+            // Категории: nameCategory, description, deleted
+            updateData.nameCategory = (submitData.nameCategory !== undefined && submitData.nameCategory !== null && submitData.nameCategory !== '') 
+              ? submitData.nameCategory 
+              : item.nameCategory;
+            updateData.description = (submitData.description !== undefined && submitData.description !== null && submitData.description !== '') 
+              ? submitData.description 
+              : item.description;
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'characteristics') {
+            // Характеристики: nameCharacteristic, description, deleted
+            updateData.nameCharacteristic = (submitData.nameCharacteristic !== undefined && submitData.nameCharacteristic !== null && submitData.nameCharacteristic !== '') 
+              ? submitData.nameCharacteristic 
+              : item.nameCharacteristic;
+            updateData.description = (submitData.description !== undefined && submitData.description !== null && submitData.description !== '') 
+              ? submitData.description 
+              : item.description;
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'products') {
+            // Товары: все обязательные поля
+            updateData.nameProduct = (submitData.nameProduct !== undefined && submitData.nameProduct !== null && submitData.nameProduct !== '') 
+              ? submitData.nameProduct 
+              : item.nameProduct;
+            updateData.article = (submitData.article !== undefined && submitData.article !== null && submitData.article !== '') 
+              ? submitData.article 
+              : (item.article || '');
+            updateData.description = (submitData.description !== undefined && submitData.description !== null && submitData.description !== '') 
+              ? submitData.description 
+              : item.description;
+            updateData.price = submitData.price !== undefined && submitData.price !== null 
+              ? Number(submitData.price) 
+              : Number(item.price);
+            updateData.stockQuantity = submitData.stockQuantity !== undefined && submitData.stockQuantity !== null 
+              ? Number(submitData.stockQuantity) 
+              : (item.stockQuantity !== undefined && item.stockQuantity !== null ? Number(item.stockQuantity) : null);
+            updateData.salesCount = submitData.salesCount !== undefined && submitData.salesCount !== null 
+              ? Number(submitData.salesCount) 
+              : (item.salesCount !== undefined && item.salesCount !== null ? Number(item.salesCount) : 0);
+            updateData.categoryId = submitData.categoryId !== undefined && submitData.categoryId !== null 
+              ? Number(submitData.categoryId) 
+              : Number(item.categoryId);
+            updateData.supplierId = submitData.supplierId !== undefined && submitData.supplierId !== null 
+              ? Number(submitData.supplierId) 
+              : Number(item.supplierId);
+            updateData.imageUrl = (submitData.imageUrl !== undefined && submitData.imageUrl !== null && submitData.imageUrl !== '') 
+              ? submitData.imageUrl 
+              : (item.imageUrl || null);
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'suppliers') {
+            // Поставщики: nameSupplier, contactEmail, phone, deleted
+            updateData.nameSupplier = (submitData.nameSupplier !== undefined && submitData.nameSupplier !== null && submitData.nameSupplier !== '') 
+              ? submitData.nameSupplier 
+              : item.nameSupplier;
+            updateData.contactEmail = (submitData.contactEmail !== undefined && submitData.contactEmail !== null && submitData.contactEmail !== '') 
+              ? submitData.contactEmail 
+              : item.contactEmail;
+            updateData.phone = (submitData.phone !== undefined && submitData.phone !== null && submitData.phone !== '') 
+              ? submitData.phone 
+              : item.phone;
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'reviews') {
+            // Отзывы: productId, userId, rating, commentText, reviewDate, deleted
+            updateData.productId = submitData.productId !== undefined && submitData.productId !== null 
+              ? Number(submitData.productId) 
+              : Number(item.productId);
+            updateData.userId = submitData.userId !== undefined && submitData.userId !== null 
+              ? Number(submitData.userId) 
+              : Number(item.userId);
+            updateData.rating = submitData.rating !== undefined && submitData.rating !== null 
+              ? Number(submitData.rating) 
+              : Number(item.rating);
+            updateData.commentText = (submitData.commentText !== undefined && submitData.commentText !== null && submitData.commentText !== '') 
+              ? submitData.commentText 
+              : (item.commentText || null);
+            updateData.reviewDate = (submitData.reviewDate !== undefined && submitData.reviewDate !== null && submitData.reviewDate !== '') 
+              ? submitData.reviewDate 
+              : item.reviewDate;
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'product-characteristics') {
+            // Характеристики товара: productId, characteristicId, description, deleted
+            updateData.productId = submitData.productId !== undefined && submitData.productId !== null 
+              ? Number(submitData.productId) 
+              : Number(item.productId);
+            updateData.characteristicId = submitData.characteristicId !== undefined && submitData.characteristicId !== null 
+              ? Number(submitData.characteristicId) 
+              : Number(item.characteristicId);
+            updateData.description = (submitData.description !== undefined && submitData.description !== null && submitData.description !== '') 
+              ? submitData.description 
+              : item.description;
+            updateData.deleted = item.deleted !== undefined ? item.deleted : false;
+          } else if (entity === 'orders') {
+            // Заказы: только statusOrderId можно изменять
+            updateData.orderNumber = item.orderNumber;
+            updateData.userId = Number(item.userId);
+            updateData.orderDate = item.orderDate;
+            updateData.totalAmount = Number(item.totalAmount);
+            updateData.statusOrderId = submitData.statusOrderId !== undefined && submitData.statusOrderId !== null 
+              ? Number(submitData.statusOrderId) 
+              : Number(item.statusOrderId);
+            updateData.addressId = item.addressId !== undefined && item.addressId !== null ? Number(item.addressId) : null;
+            updateData.deliveryTypesId = Number(item.deliveryTypesId);
+            updateData.paymentTypesId = Number(item.paymentTypesId);
+          } else {
+            // Для остальных сущностей используем исходный объект + изменения из формы
+            // Но исключаем навигационные свойства (они обычно объекты)
+            Object.keys(item).forEach(key => {
+              // Пропускаем навигационные свойства (они обычно объекты или массивы)
+              if (typeof item[key] === 'object' && item[key] !== null && !Array.isArray(item[key]) && !(item[key] instanceof Date)) {
+                return; // Пропускаем объекты (навигационные свойства)
+              }
+              // Если поле не в submitData, берем из item
+              if (submitData[key] === undefined && key !== 'id') {
+                updateData[key] = item[key];
+              }
+            });
+            // Добавляем изменения из формы
+            Object.keys(submitData).forEach(key => {
+              if (submitData[key] !== undefined && submitData[key] !== null) {
+                updateData[key] = submitData[key];
+              }
+            });
+          }
+          
+          await currentConfig.api.update(item.id, updateData);
+          toast.success('Запись обновлена');
+        }
       } else {
         await currentConfig.api.create(submitData);
         toast.success('Запись создана');

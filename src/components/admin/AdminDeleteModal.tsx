@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,11 +10,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { AlertTriangle } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 
 interface AdminDeleteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (deleteType: 'logical' | 'physical') => void;
   itemName: string;
 }
 
@@ -23,6 +26,8 @@ export const AdminDeleteModal = ({
   onConfirm,
   itemName,
 }: AdminDeleteModalProps) => {
+  const [deleteType, setDeleteType] = React.useState<'logical' | 'physical'>('logical');
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -34,13 +39,27 @@ export const AdminDeleteModal = ({
           <AlertDialogDescription>
             Вы уверены, что хотите удалить <strong>{itemName}</strong>?
             <br />
-            Это действие нельзя отменить.
+            <br />
+            <RadioGroup value={deleteType} onValueChange={(value) => setDeleteType(value as 'logical' | 'physical')} className="mt-2">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="logical" id="logical" />
+                <Label htmlFor="logical" className="font-normal cursor-pointer">
+                  Логическое удаление (можно восстановить)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="physical" id="physical" />
+                <Label htmlFor="physical" className="font-normal cursor-pointer">
+                  Физическое удаление (нельзя восстановить)
+                </Label>
+              </div>
+            </RadioGroup>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Отмена</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={() => onConfirm(deleteType)}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Удалить

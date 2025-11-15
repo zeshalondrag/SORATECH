@@ -1,13 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { BackToTopButton } from '@/components/layout/BackToTopButton';
 import { ProductCard } from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
-import { categoriesApi, productsApi, Category, Product } from '@/lib/api';
+import { 
+  categoriesApi, 
+  productsApi, 
+  productCharacteristicsApi, 
+  characteristicsApi,
+  reviewsApi,
+  Category, 
+  Product,
+  ProductCharacteristic,
+  Characteristic,
+  Review
+} from '@/lib/api';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { toast } from 'sonner';
 
@@ -29,8 +42,20 @@ const Catalog = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('popular');
   const [perPage, setPerPage] = useState('24');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Filters
+  const [priceFrom, setPriceFrom] = useState('');
+  const [priceTo, setPriceTo] = useState('');
+  const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
+  const [onlyInStock, setOnlyInStock] = useState(false);
+  
+  // Data
   const [category, setCategory] = useState<Category | null>(null);
-  const [categoryProducts, setCategoryProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productCharacteristics, setProductCharacteristics] = useState<ProductCharacteristic[]>([]);
+  const [characteristics, setCharacteristics] = useState<Characteristic[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,20 +71,156 @@ const Catalog = () => {
       // Преобразуем slug в ID
       const categoryIdNum = categorySlugToIdMap[categoryId] || parseInt(categoryId);
       
-      const [categoryData, productsData] = await Promise.all([
+      const [categoryData, productsData, productCharsData, charsData, reviewsData] = await Promise.all([
         categoriesApi.getById(categoryIdNum),
         productsApi.getAll(),
+        productCharacteristicsApi.getAll(),
+        characteristicsApi.getAll(),
+        reviewsApi.getAll(),
       ]);
 
       setCategory(categoryData);
-      const filtered = productsData.filter((p) => p.categoryId === categoryIdNum);
-      setCategoryProducts(filtered);
+      const filtered = productsData.filter((p) => p.categoryId === categoryIdNum && !p.deleted);
+      setAllProducts(filtered);
+      setProductCharacteristics(productCharsData);
+      setCharacteristics(charsData);
+      setReviews(reviewsData);
     } catch (error: any) {
       console.error('Error loading catalog:', error);
       toast.error('Ошибка загрузки каталога');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Получаем список производителей из характеристик
+  const manufacturers = useMemo(() => {
+    const manufacturerChar = characteristics.find(c => 
+      c.nameCharacteristic.toLowerCase().includes('производитель') || 
+      c.nameCharacteristic.toLowerCase().includes('manufacturer') ||
+      c.nameCharacteristic.toLowerCase().includes('бренд') ||
+      c.nameCharacteristic.toLowerCase().includes('brand')
+    );
+    
+    if (!manufacturerChar) return [];
+    
+    const manufacturerValues = new Set<string>();
+    allProducts.forEach(product => {
+      const productChar = productCharacteristics.find(
+        pc => pc.productId === product.id && pc.characteristicId === manufacturerChar.id
+      );
+      if (productChar?.description) {
+        manufacturerValues.add(productChar.description);
+      }
+    });
+    
+    return Array.from(manufacturerValues).sort();
+  }, [allProducts, productCharacteristics, characteristics]);
+
+  // Вычисляем рейтинг для каждого товара
+  const productRatings = useMemo(() => {
+    const ratingsMap = new Map<number, { sum: number; count: number }>();
+    
+    reviews.forEach(review => {
+      if (!review.deleted && review.productId) {
+        const productId = review.productId;
+        const current = ratingsMap.get(productId) || { sum: 0, count: 0 };
+        ratingsMap.set(productId, {
+          sum: current.sum + (review.rating || 0),
+          count: current.count + 1,
+        });
+      }
+    });
+    
+    const result = new Map<number, number>();
+    ratingsMap.forEach((value, productId) => {
+      result.set(productId, value.count > 0 ? value.sum / value.count : 0);
+    });
+    
+    return result;
+  }, [reviews]);
+
+  // Фильтрация и сортировка товаров
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = [...allProducts];
+
+    // Фильтр по цене
+    if (priceFrom) {
+      const from = parseFloat(priceFrom);
+      if (!isNaN(from)) {
+        filtered = filtered.filter(p => p.price >= from);
+      }
+    }
+    if (priceTo) {
+      const to = parseFloat(priceTo);
+      if (!isNaN(to)) {
+        filtered = filtered.filter(p => p.price <= to);
+      }
+    }
+
+    // Фильтр по производителю
+    if (selectedManufacturers.length > 0) {
+      const manufacturerChar = characteristics.find(c => 
+        c.nameCharacteristic.toLowerCase().includes('производитель') || 
+        c.nameCharacteristic.toLowerCase().includes('manufacturer') ||
+        c.nameCharacteristic.toLowerCase().includes('бренд') ||
+        c.nameCharacteristic.toLowerCase().includes('brand')
+      );
+      
+      if (manufacturerChar) {
+        filtered = filtered.filter(product => {
+          const productChar = productCharacteristics.find(
+            pc => pc.productId === product.id && pc.characteristicId === manufacturerChar.id
+          );
+          return productChar && selectedManufacturers.includes(productChar.description);
+        });
+      }
+    }
+
+    // Фильтр по наличию
+    if (onlyInStock) {
+      filtered = filtered.filter(p => (p.stockQuantity || 0) > 0);
+    }
+
+    // Сортировка
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'price-asc':
+          return a.price - b.price;
+        case 'price-desc':
+          return b.price - a.price;
+        case 'rating':
+          const ratingA = productRatings.get(a.id) || 0;
+          const ratingB = productRatings.get(b.id) || 0;
+          return ratingB - ratingA;
+        case 'popular':
+        default:
+          return (b.salesCount || 0) - (a.salesCount || 0);
+      }
+    });
+
+    return filtered;
+  }, [allProducts, priceFrom, priceTo, selectedManufacturers, onlyInStock, sortBy, productCharacteristics, characteristics, productRatings]);
+
+  // Пагинация
+  const itemsPerPageNum = parseInt(perPage) || 24;
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPageNum);
+  const paginatedProducts = filteredAndSortedProducts.slice(
+    (currentPage - 1) * itemsPerPageNum,
+    currentPage * itemsPerPageNum
+  );
+
+  // Сброс страницы при изменении фильтров
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [priceFrom, priceTo, selectedManufacturers, onlyInStock, sortBy, perPage]);
+
+  const handleManufacturerToggle = (manufacturer: string) => {
+    setSelectedManufacturers(prev =>
+      prev.includes(manufacturer)
+        ? prev.filter(m => m !== manufacturer)
+        : [...prev, manufacturer]
+    );
   };
 
   const breadcrumbItems = [
@@ -90,7 +251,7 @@ const Catalog = () => {
           <div>
             <h1 className="text-3xl font-bold">{category?.nameCategory}</h1>
             <p className="text-muted-foreground mt-1">
-              Найдено товаров: {categoryProducts.length}
+              Найдено товаров: {filteredAndSortedProducts.length}
             </p>
           </div>
 
@@ -126,41 +287,47 @@ const Catalog = () => {
               <div>
                 <h3 className="font-semibold mb-3">Цена</h3>
                 <div className="space-y-2">
-                  <input
+                  <Input
                     type="number"
                     placeholder="От"
-                    className="w-full px-3 py-2 border rounded-md"
+                    value={priceFrom}
+                    onChange={(e) => setPriceFrom(e.target.value)}
+                    min="0"
                   />
-                  <input
+                  <Input
                     type="number"
                     placeholder="До"
-                    className="w-full px-3 py-2 border rounded-md"
+                    value={priceTo}
+                    onChange={(e) => setPriceTo(e.target.value)}
+                    min="0"
                   />
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold mb-3">Производитель</h3>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" />
-                    <span className="text-sm">Intel</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" />
-                    <span className="text-sm">AMD</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" />
-                    <span className="text-sm">NVIDIA</span>
-                  </label>
+              {manufacturers.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Производитель</h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {manufacturers.map((manufacturer) => (
+                      <label key={manufacturer} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={selectedManufacturers.includes(manufacturer)}
+                          onCheckedChange={() => handleManufacturerToggle(manufacturer)}
+                        />
+                        <span className="text-sm">{manufacturer}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <h3 className="font-semibold mb-3">В наличии</h3>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={onlyInStock}
+                    onCheckedChange={(checked) => setOnlyInStock(checked === true)}
+                  />
                   <span className="text-sm">Только в наличии</span>
                 </label>
               </div>
@@ -185,9 +352,11 @@ const Catalog = () => {
             </div>
 
             {/* Products Grid */}
-            {categoryProducts.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                Товары в этой категории не найдены
+                {filteredAndSortedProducts.length === 0 
+                  ? 'Товары в этой категории не найдены'
+                  : 'Товары не найдены по выбранным фильтрам'}
               </div>
             ) : (
             <div
@@ -197,42 +366,69 @@ const Catalog = () => {
                   : 'space-y-4'
               }
             >
-              {categoryProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                   <ProductCard key={product.id} product={product} viewMode={viewMode} />
               ))}
             </div>
             )}
 
             {/* Pagination */}
-            <div className="mt-8 flex items-center justify-between">
-              <Select value={perPage} onValueChange={setPerPage}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Товаров на странице" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24">24 товара</SelectItem>
-                  <SelectItem value="36">36 товаров</SelectItem>
-                  <SelectItem value="48">48 товаров</SelectItem>
-                  <SelectItem value="100">100 товаров</SelectItem>
-                </SelectContent>
-              </Select>
+            {totalPages > 0 && (
+              <div className="mt-8 flex items-center justify-between">
+                <Select value={perPage} onValueChange={setPerPage}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Товаров на странице" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="24">24 товара</SelectItem>
+                    <SelectItem value="36">36 товаров</SelectItem>
+                    <SelectItem value="48">48 товаров</SelectItem>
+                    <SelectItem value="100">100 товаров</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  Предыдущая
-                </Button>
-                <Button variant="outline" size="sm">
-                  1
-                </Button>
-                <Button size="sm">2</Button>
-                <Button variant="outline" size="sm">
-                  3
-                </Button>
-                <Button variant="outline" size="sm">
-                  Следующая
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Предыдущая
+                  </Button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Следующая
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

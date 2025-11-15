@@ -37,6 +37,8 @@ export interface User {
   nickname: string;
   phone: string;
   registrationDate?: string;
+  deleted?: boolean;
+  isDarkTheme?: boolean;
   role?: {
     id: number;
     roleName: string;
@@ -103,6 +105,7 @@ export interface Review {
   rating: number;
   commentText?: string;
   reviewDate: string;
+  deleted?: boolean;
   product?: {
     id: number;
     name: string;
@@ -433,6 +436,18 @@ export const reviewsApi = {
     });
   },
 
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Reviews/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+
+  restore: async (id: number): Promise<Review> => {
+    return apiRequest<Review>(`/api/Reviews/${id}/restore`, {
+      method: 'POST',
+    });
+  },
+
   check: async (productId: number): Promise<{ canReview: boolean; hasPurchased: boolean; hasExistingReview: boolean }> => {
     return apiRequest<{ canReview: boolean; hasPurchased: boolean; hasExistingReview: boolean }>(`/api/Reviews/check/${productId}`);
   },
@@ -444,9 +459,9 @@ export interface AuditLog {
   tableName: string;
   operation: string;
   recordId?: string;
-  oldData?: string;
-  newData?: string;
-  changedBy?: string;
+  oldData?: any; // JSONB может быть объектом или строкой
+  newData?: any; // JSONB может быть объектом или строкой
+  userId?: number;
   changedAt?: string;
 }
 
@@ -454,12 +469,14 @@ export interface Category {
   id: number;
   nameCategory: string;
   description: string;
+  deleted?: boolean;
 }
 
 export interface Characteristic {
   id: number;
   nameCharacteristic: string;
   description: string;
+  deleted?: boolean;
 }
 
 export interface DeliveryType {
@@ -485,6 +502,7 @@ export interface Product {
   supplierId: number;
   imageUrl?: string;
   salesCount: number;
+  deleted?: boolean;
 }
 
 export interface ProductCharacteristic {
@@ -492,6 +510,7 @@ export interface ProductCharacteristic {
   productId: number;
   characteristicId: number;
   description: string;
+  deleted?: boolean;
 }
 
 export interface Role {
@@ -509,6 +528,7 @@ export interface Supplier {
   nameSupplier: string;
   contactEmail: string;
   phone: string;
+  deleted?: boolean;
 }
 
 export interface Cart {
@@ -560,6 +580,16 @@ export const categoriesApi = {
       method: 'DELETE',
     });
   },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Categories/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<Category> => {
+    return apiRequest<Category>(`/api/Categories/${id}/restore`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const characteristicsApi = {
@@ -584,6 +614,16 @@ export const characteristicsApi = {
   delete: async (id: number): Promise<void> => {
     return apiRequest<void>(`/api/Characteristics/${id}`, {
       method: 'DELETE',
+    });
+  },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Characteristics/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<Characteristic> => {
+    return apiRequest<Characteristic>(`/api/Characteristics/${id}/restore`, {
+      method: 'POST',
     });
   },
 };
@@ -664,6 +704,16 @@ export const productsApi = {
       method: 'DELETE',
     });
   },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Products/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<Product> => {
+    return apiRequest<Product>(`/api/Products/${id}/restore`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const productCharacteristicsApi = {
@@ -688,6 +738,16 @@ export const productCharacteristicsApi = {
   delete: async (id: number): Promise<void> => {
     return apiRequest<void>(`/api/ProductCharacteristics/${id}`, {
       method: 'DELETE',
+    });
+  },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/ProductCharacteristics/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<ProductCharacteristic> => {
+    return apiRequest<ProductCharacteristic>(`/api/ProductCharacteristics/${id}/restore`, {
+      method: 'POST',
     });
   },
 };
@@ -768,6 +828,16 @@ export const suppliersApi = {
       method: 'DELETE',
     });
   },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Suppliers/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<Supplier> => {
+    return apiRequest<Supplier>(`/api/Suppliers/${id}/restore`, {
+      method: 'POST',
+    });
+  },
 };
 
 export const adminUsersApi = {
@@ -789,10 +859,35 @@ export const adminUsersApi = {
       body: JSON.stringify(data),
     });
   },
+  updateRole: async (id: number, roleId: number): Promise<{ message: string; userId: number; newRoleId: number }> => {
+    return apiRequest<{ message: string; userId: number; newRoleId: number }>(`/api/Users/${id}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ roleId }),
+    });
+  },
   delete: async (id: number): Promise<void> => {
     return apiRequest<void>(`/api/Users/${id}`, {
       method: 'DELETE',
     });
+  },
+  hardDelete: async (id: number): Promise<void> => {
+    return apiRequest<void>(`/api/Users/${id}/hard`, {
+      method: 'DELETE',
+    });
+  },
+  restore: async (id: number): Promise<User> => {
+    return apiRequest<User>(`/api/Users/${id}/restore`, {
+      method: 'POST',
+    });
+  },
+  updateTheme: async (isDarkTheme: boolean): Promise<{ userId: number; isDarkTheme: boolean; message: string }> => {
+    return apiRequest<{ userId: number; isDarkTheme: boolean; message: string }>('/api/Users/theme', {
+      method: 'PUT',
+      body: JSON.stringify(isDarkTheme),
+    });
+  },
+  getTheme: async (): Promise<{ isDarkTheme: boolean }> => {
+    return apiRequest<{ isDarkTheme: boolean }>('/api/Users/theme');
   },
 };
 

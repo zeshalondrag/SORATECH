@@ -49,6 +49,8 @@ interface EntityConfig {
     create: (data: any) => Promise<any>;
     update: (id: number, data: any) => Promise<any>;
     delete: (id: number) => Promise<void>;
+    hardDelete?: (id: number) => Promise<void>;
+    restore?: (id: number) => Promise<any>;
   };
   columns: ColumnConfig[];
   searchFields: string[];
@@ -123,23 +125,14 @@ export const getEntityConfig = (entity: EntityType): EntityConfig => {
         { field: 'orderNumber', label: 'Номер заказа' },
         { field: 'orderDate', label: 'Дата', render: (item) => item.orderDate ? new Date(item.orderDate).toLocaleDateString('ru-RU') : '-' },
         { field: 'totalAmount', label: 'Сумма', render: (item) => item.totalAmount !== undefined && item.totalAmount !== null ? `${item.totalAmount.toLocaleString('ru-RU')} ₽` : '-' },
+        { field: 'clientEmail', label: 'Клиент', render: (item) => item.clientEmail || '-' },
       ],
       searchFields: ['orderNumber'],
       fields: [
-        { name: 'orderNumber', label: 'Номер заказа', type: 'text', required: true },
-        { name: 'userId', label: 'Пользователь', type: 'select', required: true, foreignKey: { api: adminUsersApi.getAll, valueField: 'id', labelField: 'nickname' } },
-        { name: 'orderDate', label: 'Дата заказа', type: 'text', required: true },
-        { name: 'totalAmount', label: 'Сумма', type: 'number', required: true },
         { name: 'statusOrderId', label: 'Статус', type: 'select', required: true, foreignKey: { api: async () => {
           const { statusOrdersApi } = await import('./api');
           return statusOrdersApi.getAll();
         }, valueField: 'id', labelField: 'statusName' } },
-        { name: 'addressId', label: 'Адрес', type: 'select', foreignKey: { api: addressesApi.getAll, valueField: 'id', labelField: 'street' } },
-        { name: 'deliveryTypesId', label: 'Тип доставки', type: 'select', required: true, foreignKey: { api: deliveryTypesApi.getAll, valueField: 'id', labelField: 'deliveryTypeName' } },
-        { name: 'paymentTypesId', label: 'Тип оплаты', type: 'select', required: true, foreignKey: { api: async () => {
-          const { paymentTypesApi } = await import('./api');
-          return paymentTypesApi.getAll();
-        }, valueField: 'id', labelField: 'paymentTypeName' } },
       ],
       getItemName: (item) => `Заказ #${item.orderNumber}`,
     },
@@ -147,6 +140,7 @@ export const getEntityConfig = (entity: EntityType): EntityConfig => {
       title: 'Характеристики товара',
       api: productCharacteristicsApi,
       columns: [
+        { field: 'productName', label: 'Название товара', render: (item) => item.productName || '-' },
         { field: 'description', label: 'Описание' },
       ],
       searchFields: ['description'],
@@ -190,6 +184,7 @@ export const getEntityConfig = (entity: EntityType): EntityConfig => {
       columns: [
         { field: 'rating', label: 'Рейтинг' },
         { field: 'commentText', label: 'Комментарий' },
+        { field: 'clientNickname', label: 'Клиент', render: (item) => item.clientNickname || '-' },
         { field: 'reviewDate', label: 'Дата', render: (item) => new Date(item.reviewDate).toLocaleDateString('ru-RU') },
       ],
       searchFields: ['commentText'],
@@ -238,18 +233,18 @@ export const getEntityConfig = (entity: EntityType): EntityConfig => {
         { field: 'firstName', label: 'Имя' },
         { field: 'nickname', label: 'Никнейм' },
         { field: 'phone', label: 'Телефон' },
-        { field: 'role', label: 'Роль', render: (item) => typeof item.role === 'string' ? item.role : item.role?.roleName || '-' },
+        { field: 'role', label: 'Роль', render: (item) => {
+          // ✅ ИСПРАВЛЕНО: Используем обогащенное поле role
+          if (typeof item.role === 'string') return item.role;
+          if (item.role?.roleName) return item.role.roleName;
+          // Если роль не загружена, пытаемся получить из roleId (fallback)
+          return item.role || '-';
+        } },
         { field: 'registrationDate', label: 'Дата регистрации', render: (item) => item.registrationDate ? new Date(item.registrationDate).toLocaleDateString('ru-RU') : '-' },
       ],
       searchFields: ['email', 'firstName', 'nickname', 'phone'],
       fields: [
-        { name: 'email', label: 'Email', type: 'email', required: true },
-        { name: 'passwordHash', label: 'Пароль (хэш)', type: 'text', required: true },
-        { name: 'firstName', label: 'Имя', type: 'text', required: true },
-        { name: 'nickname', label: 'Никнейм', type: 'text', required: true },
-        { name: 'phone', label: 'Телефон', type: 'text', required: true },
         { name: 'roleId', label: 'Роль', type: 'select', required: true, foreignKey: { api: rolesApi.getAll, valueField: 'id', labelField: 'roleName' } },
-        { name: 'registrationDate', label: 'Дата регистрации', type: 'text', required: true },
       ],
       getItemName: (item) => item.nickname || item.email,
     },

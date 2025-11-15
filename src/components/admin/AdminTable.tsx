@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, Download, Upload, ArrowUpDown, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, Upload, ArrowUpDown, Eye, RotateCcw, Archive } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -26,9 +26,10 @@ import { getEntityConfig, EntityType } from '@/lib/adminConfig';
 
 interface AdminTableProps {
   entity: EntityType;
+  hideImportExport?: boolean;
 }
 
-export const AdminTable = ({ entity }: AdminTableProps) => {
+export const AdminTable = ({ entity, hideImportExport = false }: AdminTableProps) => {
   const config = getEntityConfig(entity);
   const [data, setData] = useState<any[]>([]);
   const [filteredData, setFilteredData] = useState<any[]>([]);
@@ -41,24 +42,171 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
   const [deletingItem, setDeletingItem] = useState<any | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<any | null>(null);
+  const [enrichedData, setEnrichedData] = useState<any[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [allData, setAllData] = useState<any[]>([]);
+  const [allEnrichedData, setAllEnrichedData] = useState<any[]>([]);
   const itemsPerPage = 10;
   
   const isOrdersEntity = entity === 'orders';
+  const isReviewsEntity = entity === 'reviews';
+  const isUsersEntity = entity === 'users';
+  
+  // Проверяем, поддерживает ли сущность логическое удаление
+  const supportsSoftDelete = config.api.hardDelete !== undefined && config.api.restore !== undefined;
 
   useEffect(() => {
     loadData();
+    setShowDeleted(false);
+    setCurrentPage(1);
   }, [entity]);
 
   useEffect(() => {
     applyFiltersAndSort();
-  }, [data, searchQuery, sortField, sortDirection]);
+  }, [enrichedData, data, searchQuery, sortField, sortDirection, showDeleted]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const result = await config.api.getAll();
+      // Загружаем активные данные
+      // Для users используем параметр includeDeleted=false
+      const result = entity === 'users' 
+        ? await (config.api as any).getAll(false)
+        : await config.api.getAll();
       setData(result);
-      setFilteredData(result);
+      
+      // Загружаем удаленные записи через прямой запрос к API
+      let deletedData: any[] = [];
+      if (supportsSoftDelete) {
+        try {
+          const { getToken } = await import('@/lib/api');
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+          const token = getToken();
+          
+          // Определяем endpoint в зависимости от сущности
+          const endpoints: Record<string, string> = {
+            'categories': '/api/Categories',
+            'characteristics': '/api/Characteristics',
+            'products': '/api/Products',
+            'suppliers': '/api/Suppliers',
+            'reviews': '/api/Reviews',
+            'product-characteristics': '/api/ProductCharacteristics',
+            'users': '/api/Users',
+          };
+          
+          const endpoint = endpoints[entity];
+          if (endpoint) {
+            // Делаем прямой запрос к API для получения всех записей
+            // Примечание: API может фильтровать удаленные на сервере,
+            // поэтому нужно добавить параметр includeDeleted или отдельный endpoint
+            // Пробуем загрузить с параметром, если не работает - без параметра
+            try {
+              const response = await fetch(`${API_BASE_URL}${endpoint}?includeDeleted=true`, {
+                headers: {
+                  'Authorization': token ? `Bearer ${token}` : '',
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (response.ok) {
+                const allItems = await response.json();
+                // Фильтруем удаленные на клиенте (если API их вернул)
+                deletedData = allItems.filter((item: any) => item.deleted === true);
+              }
+            } catch {
+              // Если запрос с параметром не работает, пробуем без параметра
+              // Но API все равно может фильтровать удаленные на сервере
+              try {
+                const response2 = await fetch(`${API_BASE_URL}${endpoint}`, {
+                  headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Content-Type': 'application/json',
+                  },
+                });
+                if (response2.ok) {
+                  const allItems = await response2.json();
+                  deletedData = allItems.filter((item: any) => item.deleted === true);
+                }
+              } catch (err) {
+                console.warn('Could not load deleted items:', err);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Could not load deleted items:', error);
+        }
+      }
+      
+      const allItems = [...result, ...deletedData];
+      setAllData(allItems);
+      
+      // Обогащаем данные для колонок с async render
+      const enrichData = async (items: any[]) => {
+        if (entity === 'orders') {
+          // Загружаем всех пользователей один раз для оптимизации
+          try {
+            const { adminUsersApi } = await import('@/lib/api');
+            const allUsers = await adminUsersApi.getAll();
+            const usersMap = new Map(allUsers.map(user => [Number(user.id), user]));
+            
+            return items.map((item) => {
+              const userId = item.userId ? Number(item.userId) : null;
+              const user = userId ? usersMap.get(userId) : null;
+              return { ...item, clientEmail: user?.email || '-' };
+            });
+          } catch {
+            return items.map(item => ({ ...item, clientEmail: '-' }));
+          }
+        } else if (entity === 'reviews') {
+          // Загружаем всех пользователей один раз для оптимизации
+          try {
+            const { adminUsersApi } = await import('@/lib/api');
+            const allUsers = await adminUsersApi.getAll();
+            const usersMap = new Map(allUsers.map(user => [Number(user.id), user]));
+            
+            return items.map((item) => {
+              const userId = item.userId ? Number(item.userId) : null;
+              const user = userId ? usersMap.get(userId) : null;
+              return { ...item, clientNickname: user?.nickname || user?.firstName || '-' };
+            });
+          } catch {
+            return items.map(item => ({ ...item, clientNickname: '-' }));
+          }
+        } else if (entity === 'product-characteristics') {
+          return await Promise.all(items.map(async (item) => {
+            try {
+              const { productsApi } = await import('@/lib/api');
+              const product = await productsApi.getById(item.productId);
+              return { ...item, productName: product.nameProduct || '-' };
+            } catch {
+              return { ...item, productName: '-' };
+            }
+          }));
+        } else if (entity === 'users') {
+          // ✅ ДОБАВИТЬ: Обогащаем пользователей названиями ролей
+          try {
+            const { rolesApi } = await import('@/lib/api');
+            const roles = await rolesApi.getAll();
+            const rolesMap = new Map(roles.map(role => [role.id, role.roleName]));
+            
+            return items.map(item => {
+              const roleName = rolesMap.get(item.roleId);
+              return { ...item, role: roleName || '-' };
+            });
+          } catch {
+            return items.map(item => ({ ...item, role: '-' }));
+          }
+        } else {
+          return items;
+        }
+      };
+      
+      const enriched = await enrichData(result);
+      const allEnriched = await enrichData(allItems);
+      
+      setEnrichedData(enriched);
+      setAllEnrichedData(allEnriched);
+      setFilteredData(enriched);
     } catch (error: any) {
       console.error(`Error loading ${config.title}:`, error);
       toast.error(`Ошибка загрузки ${config.title}`, {
@@ -70,7 +218,12 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
   };
 
   const applyFiltersAndSort = () => {
-    let filtered = [...data];
+    // Выбираем данные в зависимости от режима (активные/удаленные)
+    const sourceData = showDeleted 
+      ? (allEnrichedData.length > 0 ? allEnrichedData.filter(item => item.deleted === true) : allData.filter(item => item.deleted === true))
+      : (enrichedData.length > 0 ? enrichedData.filter(item => !item.deleted) : data.filter(item => !item.deleted));
+    
+    let filtered = [...sourceData];
 
     // Search
     if (searchQuery) {
@@ -91,6 +244,17 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
         if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       });
+    } else if (entity === 'reviews') {
+      // Сортировка по новизне для отзывов по умолчанию (новые первыми)
+      filtered.sort((a, b) => {
+        const dateA = a.reviewDate ? new Date(a.reviewDate).getTime() : 0;
+        const dateB = b.reviewDate ? new Date(b.reviewDate).getTime() : 0;
+        // Сначала по дате (убывание), затем по ID (убывание) для стабильности сортировки
+        if (dateB !== dateA) {
+          return dateB - dateA;
+        }
+        return (b.id || 0) - (a.id || 0);
+      });
     }
 
     setFilteredData(filtered);
@@ -106,15 +270,43 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (deleteType: 'logical' | 'physical') => {
     if (!deletingItem) return;
     try {
-      await config.api.delete(deletingItem.id);
-      toast.success('Запись удалена');
+      if (deleteType === 'logical') {
+        // Логическое удаление - используем стандартный DELETE endpoint
+        await config.api.delete(deletingItem.id);
+        toast.success('Запись удалена (логически)');
+      } else {
+        // Физическое удаление - используем hardDelete endpoint
+        if (config.api.hardDelete) {
+          await config.api.hardDelete(deletingItem.id);
+          toast.success('Запись удалена (физически)');
+        } else {
+          toast.error('Физическое удаление не поддерживается для этой сущности');
+          return;
+        }
+      }
       loadData();
       setDeletingItem(null);
     } catch (error: any) {
       toast.error('Ошибка удаления');
+    }
+  };
+
+  const handleRestore = async (item: any) => {
+    try {
+      if (config.api.restore) {
+        await config.api.restore(item.id);
+        toast.success('Запись восстановлена');
+        // Переключаемся на активные записи после восстановления
+        setShowDeleted(false);
+        loadData();
+      } else {
+        toast.error('Восстановление не поддерживается для этой сущности');
+      }
+    } catch (error: any) {
+      toast.error('Ошибка восстановления');
     }
   };
 
@@ -276,24 +468,43 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
   }
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{config.title}</h1>
+          <h1 className="text-3xl font-bold">
+            {showDeleted ? `Удаленные ${config.title.toLowerCase()}` : config.title}
+          </h1>
           <p className="text-muted-foreground mt-2">
-            Управление {config.title.toLowerCase()}
+            {showDeleted ? `Просмотр удаленных записей` : `Управление ${config.title.toLowerCase()}`}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleImportCSV}>
-            <Upload className="h-4 w-4 mr-2" />
-            Импорт CSV
-          </Button>
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Экспорт CSV
-          </Button>
-          {!isOrdersEntity && (
+          {supportsSoftDelete && (
+            <Button 
+              variant={showDeleted ? "default" : "outline"} 
+              onClick={() => {
+                setShowDeleted(!showDeleted);
+                setCurrentPage(1);
+                loadData(); // Перезагружаем данные при переключении
+              }}
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              {showDeleted ? 'Активные записи' : 'Удаленные записи'}
+            </Button>
+          )}
+          {!hideImportExport && (
+            <>
+              <Button variant="outline" onClick={handleImportCSV}>
+                <Upload className="h-4 w-4 mr-2" />
+                Импорт CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV}>
+                <Download className="h-4 w-4 mr-2" />
+                Экспорт CSV
+              </Button>
+            </>
+          )}
+          {!isOrdersEntity && !isReviewsEntity && !isUsersEntity && !showDeleted && (
             <Button onClick={() => setIsAddModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Добавить
@@ -352,12 +563,30 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
                   <TableCell>
                     <div className="flex gap-2">
                       {isOrdersEntity ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setViewingOrder(item)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingItem(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : item.deleted ? (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setViewingOrder(item)}
+                          onClick={() => handleRestore(item)}
+                          title="Восстановить"
                         >
-                          <Eye className="h-4 w-4" />
+                          <RotateCcw className="h-4 w-4" />
                         </Button>
                       ) : (
                         <>
@@ -438,7 +667,7 @@ export const AdminTable = ({ entity }: AdminTableProps) => {
         itemName={deletingItem ? config.getItemName(deletingItem) : ''}
       />
 
-      {isOrdersEntity && (
+      {isOrdersEntity && viewingOrder && (
         <AdminOrderDetailsModal
           order={viewingOrder}
           open={!!viewingOrder}

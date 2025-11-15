@@ -11,6 +11,7 @@ import Catalog from "./pages/Catalog";
 import Product from "./pages/Product";
 import Account from "./pages/Account";
 import Admin from "./pages/Admin";
+import Manager from "./pages/Manager";
 import Favorites from "./pages/Favorites";
 import Cart from "./pages/Cart";
 import NotFound from "./pages/NotFound";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/product/:id" element={<Product />} />
             <Route path="/account" element={<Account />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/manager" element={<Manager />} />
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/cart" element={<Cart />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

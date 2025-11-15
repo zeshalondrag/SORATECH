@@ -1,7 +1,7 @@
-import { Home, BarChart3, FileSearch, MapPin, FolderTree, Tag, Package, ShoppingCart, Layers, Star, Shield, Truck, Users, LogOut } from 'lucide-react';
+import { Home, BarChart3, Tag, Package, ShoppingCart, Layers, Star, Truck, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface AdminSidebarProps {
+interface ManagerSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onBackToProfile: () => void;
@@ -10,21 +10,18 @@ interface AdminSidebarProps {
 const menuItems = [
   { id: 'dashboard', label: 'Главная', icon: Home },
   { id: 'analytics', label: 'Аналитика', icon: BarChart3 },
-  { id: 'audit', label: 'Аудит', icon: FileSearch },
 ];
 
 const managementItems = [
-  { id: 'categories', label: 'Категории', icon: FolderTree },
   { id: 'characteristics', label: 'Характеристики', icon: Tag },
   { id: 'orders', label: 'Заказы', icon: ShoppingCart },
   { id: 'product-characteristics', label: 'Характеристики товара', icon: Layers },
   { id: 'products', label: 'Товары', icon: Package },
   { id: 'reviews', label: 'Отзывы', icon: Star },
   { id: 'suppliers', label: 'Поставщики', icon: Truck },
-  { id: 'users', label: 'Пользователи', icon: Users },
 ];
 
-export const AdminSidebar = ({ activeTab, onTabChange, onBackToProfile }: AdminSidebarProps) => {
+export const ManagerSidebar = ({ activeTab, onTabChange, onBackToProfile }: ManagerSidebarProps) => {
   return (
     <div className="bg-card border-r flex flex-col w-64">
       {/* Logo */}
