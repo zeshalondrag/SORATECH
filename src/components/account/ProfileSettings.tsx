@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,17 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     nickname: user?.nickname || '',
     phone: user?.phone || '',
   });
+
+  // Обновляем форму при изменении user
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        nickname: user.nickname || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
 
   const handleSave = async () => {
     if (!user) return;

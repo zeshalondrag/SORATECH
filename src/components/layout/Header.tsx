@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { useStore } from '@/stores/useStore';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { CurrencySelector } from '@/components/currency/CurrencySelector';
 import { useEffect, useState, useRef } from 'react';
 import { productsApi, type Product } from '@/lib/api';
 import { Card } from '@/components/ui/card';
+import { formatPrice } from '@/lib/currency';
 
 export const Header = () => {
-  const { cart, favorites, comparison, isAuthenticated, openAuthModal } = useStore();
+  const { cart, favorites, comparison, isAuthenticated, openAuthModal, currency } = useStore();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,9 +115,10 @@ export const Header = () => {
               </Link>
             </nav>
 
-            {/* Theme Toggle and Configurator Button */}
+            {/* Theme Toggle, Currency Selector and Configurator Button */}
             <div className="flex items-center gap-2">
               <ThemeToggle />
+              <CurrencySelector />
             <Button variant="outline" asChild>
               <Link to="/configurator" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
@@ -170,7 +173,7 @@ export const Header = () => {
                           <p className="font-medium text-sm truncate">{product.nameProduct}</p>
                           <p className="text-xs text-muted-foreground">Артикул: {product.article}</p>
                           <p className="text-sm font-semibold text-primary mt-1">
-                            {product.price.toLocaleString('ru-RU')} ₽
+                            {formatPrice(product.price, currency)}
                           </p>
                         </div>
                       </button>

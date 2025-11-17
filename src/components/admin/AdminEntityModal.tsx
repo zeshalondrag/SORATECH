@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { getEntityConfig, EntityType } from '@/lib/adminConfig';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface AdminEntityModalProps {
   entity: EntityType;
@@ -97,6 +98,33 @@ export const AdminEntityModal = ({
     }
   }, [open, item, entity, loadForeignKeys]);
 
+
+  // Горячие клавиши для модального окна
+  useKeyboardShortcuts([
+    {
+      key: 'Enter',
+      ctrl: true,
+      description: 'Сохранить изменения',
+      action: () => {
+        if (open && !isLoading) {
+          const form = document.querySelector('form');
+          if (form) {
+            form.requestSubmit();
+          }
+        }
+      },
+    },
+    {
+      key: 'Escape',
+      description: 'Закрыть модальное окно',
+      action: () => {
+        if (open) {
+          onOpenChange(false);
+        }
+      },
+      preventDefault: true,
+    },
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

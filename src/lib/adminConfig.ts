@@ -22,6 +22,7 @@ import {
   Supplier,
   User,
 } from './api';
+import { maskPhone } from './maskPhone';
 
 export type EntityType =
   | 'addresses'
@@ -232,7 +233,7 @@ export const getEntityConfig = (entity: EntityType): EntityConfig => {
         { field: 'email', label: 'Email' },
         { field: 'firstName', label: 'Имя' },
         { field: 'nickname', label: 'Никнейм' },
-        { field: 'phone', label: 'Телефон' },
+        { field: 'phone', label: 'Телефон', render: (item) => item.phone ? maskPhone(item.phone) : '-' },
         { field: 'role', label: 'Роль', render: (item) => {
           // ✅ ИСПРАВЛЕНО: Используем обогащенное поле role
           if (typeof item.role === 'string') return item.role;

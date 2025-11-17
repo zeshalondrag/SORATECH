@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Star, Heart, ShoppingCart, GitCompare, Minus, Plus, HelpCircle, Pencil, Trash2 } from 'lucide-react';
 import { useStore } from '@/stores/useStore';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { Separator } from '@/components/ui/separator';
@@ -70,7 +71,8 @@ const Product = () => {
     addToRecentlyViewed, 
     recentlyViewed,
     user,
-    isAuthenticated
+    isAuthenticated,
+    currency
   } = useStore();
   
   const [product, setProduct] = useState<Product | null>(null);
@@ -516,7 +518,7 @@ const Product = () => {
             {/* Цена и статус в одной строке */}
             <div className="flex items-center justify-between">
               <div className="text-4xl font-bold">
-                {product.price.toLocaleString('ru-RU')} ₽
+                {formatPrice(product.price, currency)}
               </div>
               {inStock ? (
                 <Badge variant="default">В наличии: {product.stockQuantity} {product.stockQuantity === 1 ? 'шт.' : product.stockQuantity < 5 ? 'шт.' : 'шт.'}</Badge>
@@ -908,7 +910,7 @@ const Product = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
               {recentlyViewed.slice(0, 5).map((product) => (
                 <ProductCard key={product.id} product={product} />
-              ))}
+                ))}
             </div>
           </section>
         )}

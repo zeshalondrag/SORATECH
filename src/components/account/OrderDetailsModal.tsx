@@ -14,6 +14,8 @@ import { useEffect, useState } from 'react';
 import { deliveryTypesApi, paymentTypesApi, addressesApi, productsApi, orderItemsApi } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Package, MapPin, CreditCard, Calendar, ShoppingBag } from 'lucide-react';
+import { useStore } from '@/stores/useStore';
+import { formatPrice } from '@/lib/currency';
 
 interface OrderDetailsModalProps {
   order: Order;
@@ -24,6 +26,7 @@ interface OrderDetailsModalProps {
 type OrderItemWithProduct = OrderItem & { product?: Product };
 
 export const OrderDetailsModal = ({ order, open, onOpenChange }: OrderDetailsModalProps) => {
+  const { currency } = useStore();
   const [deliveryType, setDeliveryType] = useState<DeliveryType | null>(null);
   const [paymentType, setPaymentType] = useState<PaymentType | null>(null);
   const [address, setAddress] = useState<Address | null>(null);
@@ -175,7 +178,7 @@ export const OrderDetailsModal = ({ order, open, onOpenChange }: OrderDetailsMod
                         </p>
                         {paymentCommission > 0 && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Комиссия (2%): {paymentCommission.toLocaleString('ru-RU')} ₽
+                            Комиссия (2%): {formatPrice(paymentCommission, currency)}
                           </p>
                         )}
                       </div>
@@ -220,10 +223,10 @@ export const OrderDetailsModal = ({ order, open, onOpenChange }: OrderDetailsMod
                               )}
                               <div className="flex items-center justify-between mt-1">
                                 <p className="text-xs text-muted-foreground">
-                                  {item.unitPrice.toLocaleString('ru-RU')} ₽ × {item.quantity}
+                                  {formatPrice(item.unitPrice, currency)} × {item.quantity}
                                 </p>
                                 <p className="font-semibold text-sm">
-                                  {itemTotal.toLocaleString('ru-RU')} ₽
+                                  {formatPrice(itemTotal, currency)}
                                 </p>
                               </div>
                             </div>
@@ -240,7 +243,7 @@ export const OrderDetailsModal = ({ order, open, onOpenChange }: OrderDetailsMod
                   <div className="flex justify-between items-center pt-2">
                     <span className="text-base font-semibold">Итого к оплате:</span>
                     <Badge variant="default" className="text-lg font-bold px-3 py-1">
-                      {order.totalAmount.toLocaleString('ru-RU')} ₽
+                      {formatPrice(order.totalAmount, currency)}
                     </Badge>
                   </div>
                 </CardContent>

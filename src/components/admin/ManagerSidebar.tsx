@@ -1,10 +1,11 @@
-import { Home, BarChart3, Tag, Package, ShoppingCart, Layers, Star, Truck, LogOut } from 'lucide-react';
+import { Home, BarChart3, Tag, Package, ShoppingCart, Layers, Star, Truck, LogOut, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ManagerSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onBackToProfile: () => void;
+  onShowShortcuts?: () => void;
 }
 
 const menuItems = [
@@ -21,7 +22,7 @@ const managementItems = [
   { id: 'suppliers', label: 'Поставщики', icon: Truck },
 ];
 
-export const ManagerSidebar = ({ activeTab, onTabChange, onBackToProfile }: ManagerSidebarProps) => {
+export const ManagerSidebar = ({ activeTab, onTabChange, onBackToProfile, onShowShortcuts }: ManagerSidebarProps) => {
   return (
     <div className="bg-card border-r flex flex-col w-64">
       {/* Logo */}
@@ -80,8 +81,18 @@ export const ManagerSidebar = ({ activeTab, onTabChange, onBackToProfile }: Mana
         </div>
       </div>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t">
+      {/* Footer */}
+      <div className="p-4 border-t space-y-2">
+        {onShowShortcuts && (
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            onClick={onShowShortcuts}
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Горячие клавиши
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="w-full justify-start"

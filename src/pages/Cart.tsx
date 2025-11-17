@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { cartsApi, productsApi, addressesApi, deliveryTypesApi, paymentTypesApi, ordersApi, statusOrdersApi, orderItemsApi, type Cart, type Product, type Address, type DeliveryType, type PaymentType, type Order, type OrderItem, type CreateOrder } from '@/lib/api';
 import { useStore } from '@/stores/useStore';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { productCharacteristicsApi, characteristicsApi, reviewsApi } from '@/lib/api';
 import { OrderSuccessModal } from '@/components/account/OrderSuccessModal';
@@ -54,7 +55,7 @@ import { sendReceiptEmail } from '@/lib/emailService';
 
 const Cart = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, cart: storeCart, removeFromCart, updateQuantity, clearCart, toggleFavorite, favorites } = useStore();
+  const { user, isAuthenticated, cart: storeCart, removeFromCart, updateQuantity, clearCart, toggleFavorite, favorites, currency } = useStore();
   
   const [carts, setCarts] = useState<Cart[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -843,11 +844,11 @@ const Cart = () => {
                               {/* Price */}
                               <div className="text-right min-w-[100px]">
                                 <div className="text-lg font-bold">
-                                  {totalPrice.toLocaleString('ru-RU')} ₽
+                                  {formatPrice(totalPrice, currency)}
                                 </div>
                                 {cartQuantity > 1 && (
                                   <div className="text-xs text-muted-foreground">
-                                    {product.price.toLocaleString('ru-RU')} ₽ × {cartQuantity}
+                                    {formatPrice(product.price, currency)} × {cartQuantity}
                                   </div>
                                 )}
                               </div>
@@ -1104,7 +1105,6 @@ const Cart = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="contact-phone">Телефон</Label>
                         <Input
                           id="contact-phone"
                           type="tel"
@@ -1145,7 +1145,7 @@ const Cart = () => {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Ваши товары ({selectedCount})</span>
-                  <span>{productsTotal.toLocaleString('ru-RU')} ₽</span>
+                  <span>{formatPrice(productsTotal, currency)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Способ получения</span>
@@ -1155,18 +1155,18 @@ const Cart = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Стоимость доставки</span>
-                  <span>{deliveryCost === 0 ? 'Бесплатно' : `${deliveryCost.toLocaleString('ru-RU')} ₽`}</span>
+                  <span>{deliveryCost === 0 ? 'Бесплатно' : formatPrice(deliveryCost, currency)}</span>
                 </div>
                 {paymentCommission > 0 && (
                   <div className="flex justify-between">
                     <span>Комиссия (2%)</span>
-                    <span>{paymentCommission.toLocaleString('ru-RU')} ₽</span>
+                    <span>{formatPrice(paymentCommission, currency)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Итого к оплате:</span>
-                  <span>{total.toLocaleString('ru-RU')} ₽</span>
+                  <span>{formatPrice(total, currency)}</span>
                 </div>
               </div>
             </div>
@@ -1302,9 +1302,9 @@ const Cart = () => {
                           <td className="p-2 border text-sm">
                             {truncateCharacteristics(characteristics, 60)}
                           </td>
-                          <td className="p-2 border">{product.price.toLocaleString('ru-RU')} ₽</td>
+                          <td className="p-2 border">{formatPrice(product.price, currency)}</td>
                           <td className="p-2 border">{cart.quantity}</td>
-                          <td className="p-2 border">{totalPrice.toLocaleString('ru-RU')} ₽</td>
+                          <td className="p-2 border">{formatPrice(totalPrice, currency)}</td>
                         </tr>
                       );
                     })}
@@ -1326,7 +1326,7 @@ const Cart = () => {
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Итого:</span>
-                <span>{total.toLocaleString('ru-RU')} ₽</span>
+                <span>{formatPrice(total, currency)}</span>
               </div>
               <div className="text-sm text-muted-foreground">
                 Дата: {deliveryDate ? format(deliveryDate, "PPP", { locale: ru }) : 'Не выбрана'}

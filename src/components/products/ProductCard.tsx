@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Product as ApiProduct, ProductCharacteristic, productCharacteristicsApi, characteristicsApi, Characteristic, reviewsApi, Review } from '@/lib/api';
 import { Product as MockProduct } from '@/lib/mockData';
 import { useStore } from '@/stores/useStore';
+import { formatPrice } from '@/lib/currency';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
@@ -17,7 +18,7 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = false }: ProductCardProps) => {
   const navigate = useNavigate();
-  const { addToCart, toggleFavorite, toggleComparison, favorites, comparison, cart, updateQuantity, removeFromCart } = useStore();
+  const { addToCart, toggleFavorite, toggleComparison, favorites, comparison, cart, updateQuantity, removeFromCart, currency } = useStore();
   const [characteristics, setCharacteristics] = useState<Array<{ name: string; value: string }>>([]);
   const [rating, setRating] = useState<number>(0);
   const [reviewCount, setReviewCount] = useState<number>(0);
@@ -241,7 +242,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
               {/* Цена и наличие */}
               <div className="flex items-center gap-3">
                 <div className="text-2xl font-bold">
-                  {productPrice.toLocaleString('ru-RU')} ₽
+                  {formatPrice(productPrice, currency)}
                 </div>
                 <Badge variant={inStock ? 'default' : 'secondary'}>
                   {inStock ? 'В наличии' : 'Нет в наличии'}
@@ -356,7 +357,7 @@ export const ProductCard = ({ product, viewMode = 'grid', hideFavoriteIcon = fal
         {/* Price and Icons */}
         <div className="flex items-center justify-between mb-2">
           <div className="text-2xl font-bold">
-            {productPrice.toLocaleString('ru-RU')} ₽
+            {formatPrice(productPrice, currency)}
           </div>
           <div className="flex gap-1">
             <Button

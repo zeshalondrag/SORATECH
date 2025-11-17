@@ -12,9 +12,12 @@ interface StoreState {
   // Auth
   user: User | null;
   isAuthenticated: boolean;
+  currency: 'RUB' | 'USD';
   login: (user: User, token: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
+  setCurrency: (currency: 'RUB' | 'USD') => Promise<void>;
+  loadCurrency: () => Promise<void>;
   
   // Cart
   cart: CartItem[];
@@ -56,20 +59,56 @@ export const useStore = create<StoreState>()(
       // Auth
       user: null,
       isAuthenticated: false,
+      currency: 'RUB',
       login: async (user, token) => {
         localStorage.setItem('auth_token', token);
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, currency: (user.currency as 'RUB' | 'USD') || 'RUB' });
         // Загружаем избранное и корзину после входа
         setTimeout(() => {
           get().loadFavorites();
           get().loadCart();
+          get().loadCurrency();
         }, 100);
       },
       logout: () => {
         authApi.logout();
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, currency: 'RUB' });
       },
-      setUser: (user) => set({ user }),
+      setUser: (user) => set({ user, currency: (user.currency as 'RUB' | 'USD') || 'RUB' }),
+      setCurrency: async (currency) => {
+        const { user, isAuthenticated } = get();
+        if (isAuthenticated && user) {
+          try {
+            const { usersApi } = await import('@/lib/api');
+            await usersApi.updateCurrency(currency);
+            set({ currency });
+            // Обновляем валюту в объекте пользователя
+            if (user) {
+              set({ user: { ...user, currency } });
+            }
+          } catch (error: any) {
+            console.error('Error updating currency:', error);
+            throw error;
+          }
+        } else {
+          // Для неавторизованных пользователей сохраняем только локально
+          set({ currency });
+        }
+      },
+      loadCurrency: async () => {
+        const { user, isAuthenticated } = get();
+        if (isAuthenticated && user) {
+          try {
+            const { usersApi } = await import('@/lib/api');
+            const response = await usersApi.getCurrency();
+            set({ currency: (response.currency as 'RUB' | 'USD') || 'RUB' });
+          } catch (error: any) {
+            console.error('Error loading currency:', error);
+            // Используем валюту из объекта пользователя или значение по умолчанию
+            set({ currency: (user?.currency as 'RUB' | 'USD') || 'RUB' });
+          }
+        }
+      },
       
       // Cart
       cart: [],
@@ -448,6 +487,7 @@ export const useStore = create<StoreState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        currency: state.currency,
         cart: state.cart,
         cartIds: state.cartIds,
         favorites: state.favorites,

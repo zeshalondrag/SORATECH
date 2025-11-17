@@ -1,10 +1,11 @@
-import { Home, BarChart3, FileSearch, MapPin, FolderTree, Tag, Package, ShoppingCart, Layers, Star, Shield, Truck, Users, LogOut } from 'lucide-react';
+import { Home, BarChart3, FileSearch, MapPin, FolderTree, Tag, Package, ShoppingCart, Layers, Star, Shield, Truck, Users, LogOut, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface AdminSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onBackToProfile: () => void;
+  onShowShortcuts?: () => void;
 }
 
 const menuItems = [
@@ -24,7 +25,7 @@ const managementItems = [
   { id: 'users', label: 'Пользователи', icon: Users },
 ];
 
-export const AdminSidebar = ({ activeTab, onTabChange, onBackToProfile }: AdminSidebarProps) => {
+export const AdminSidebar = ({ activeTab, onTabChange, onBackToProfile, onShowShortcuts }: AdminSidebarProps) => {
   return (
     <div className="bg-card border-r flex flex-col w-64">
       {/* Logo */}
@@ -83,8 +84,18 @@ export const AdminSidebar = ({ activeTab, onTabChange, onBackToProfile }: AdminS
         </div>
       </div>
 
-      {/* Logout Button */}
-      <div className="p-4 border-t">
+      {/* Footer */}
+      <div className="p-4 border-t space-y-2">
+        {onShowShortcuts && (
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            onClick={onShowShortcuts}
+          >
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Горячие клавиши
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="w-full justify-start"

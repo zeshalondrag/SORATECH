@@ -41,8 +41,8 @@ export const ReviewModal = ({ open, onOpenChange, productName, onSubmit, review 
 
     onSubmit(rating, comment);
     if (!review) {
-      setRating(0);
-      setComment('');
+    setRating(0);
+    setComment('');
     }
     onOpenChange(false);
     toast.success(review ? 'Отзыв успешно обновлен' : 'Отзыв успешно добавлен');

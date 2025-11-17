@@ -30,18 +30,153 @@ export const AuthModal = () => {
     agreeTerms: false,
     agreeMarketing: false,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Валидация email
+  const validateEmail = (email: string): string | null => {
+    if (!email) {
+      return 'Email обязателен для заполнения';
+    }
+    if (!email.includes('@')) {
+      return 'Email должен содержать символ @';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return 'Введите корректный email адрес';
+    }
+    return null;
+  };
+
+  // Валидация пароля
+  const validatePassword = (password: string, isLogin: boolean = false): string | null => {
+    if (!password) {
+      return 'Пароль обязателен для заполнения';
+    }
+    if (!isLogin) {
+      if (password.length < 8) {
+        return 'Пароль должен содержать минимум 8 символов';
+      }
+      if (!/[A-ZА-Я]/.test(password)) {
+        return 'Пароль должен содержать хотя бы одну заглавную букву';
+      }
+      if (!/[a-zа-я]/.test(password)) {
+        return 'Пароль должен содержать хотя бы одну строчную букву';
+      }
+      if (!/\d/.test(password)) {
+        return 'Пароль должен содержать хотя бы одну цифру';
+      }
+      if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        return 'Пароль должен содержать хотя бы один специальный символ (!@#$%^&*()_+-=[]{}|;:,.<>?)';
+      }
+    }
+    return null;
+  };
+
+  // Валидация имени
+  const validateFirstName = (firstName: string): string | null => {
+    if (!firstName) {
+      return 'Имя обязательно для заполнения';
+    }
+    if (firstName.length < 2) {
+      return 'Имя должно содержать минимум 2 символа';
+    }
+    return null;
+  };
+
+  // Валидация телефона
+  const validatePhone = (phone: string): string | null => {
+    if (phone && phone.length > 0) {
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      if (!phoneRegex.test(phone)) {
+        return 'Некорректный формат телефона';
+      }
+      if (phone.replace(/[\s\-\+\(\)]/g, '').length < 10) {
+        return 'Телефон должен содержать минимум 10 цифр';
+      }
+    }
+    return null;
+  };
+
+  // Валидация подтверждения пароля
+  const validateConfirmPassword = (password: string, confirmPassword: string): string | null => {
+    if (!confirmPassword) {
+      return 'Подтвердите пароль';
+    }
+    if (password !== confirmPassword) {
+      return 'Пароли не совпадают';
+    }
+    return null;
+  };
+
+  // Валидация всех полей для логина
+  const validateLoginForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    const emailError = validateEmail(formData.email);
+    if (emailError) {
+      newErrors.email = emailError;
+      toast.error(emailError);
+    }
+    
+    const passwordError = validatePassword(formData.password, true);
+    if (passwordError) {
+      newErrors.password = passwordError;
+      toast.error(passwordError);
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Валидация всех полей для регистрации
+  const validateRegisterForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    const emailError = validateEmail(formData.email);
+    if (emailError) {
+      newErrors.email = emailError;
+      toast.error(emailError);
+    }
+    
+    const firstNameError = validateFirstName(formData.firstName);
+    if (firstNameError) {
+      newErrors.firstName = firstNameError;
+      toast.error(firstNameError);
+    }
+    
+    if (formData.phone) {
+      const phoneError = validatePhone(formData.phone);
+      if (phoneError) {
+        newErrors.phone = phoneError;
+        toast.error(phoneError);
+      }
+    }
+    
+    const passwordError = validatePassword(formData.password, false);
+    if (passwordError) {
+      newErrors.password = passwordError;
+      toast.error(passwordError);
+    }
+    
+    const confirmPasswordError = validateConfirmPassword(formData.password, formData.confirmPassword);
+    if (confirmPasswordError) {
+      newErrors.confirmPassword = confirmPasswordError;
+      toast.error(confirmPasswordError);
+    }
+    
+    if (!formData.agreeTerms) {
+      newErrors.agreeTerms = 'Необходимо принять условия пользовательского соглашения';
+      toast.error('Необходимо принять условия пользовательского соглашения');
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Валидация на клиенте
-    if (!formData.email || !formData.email.includes('@')) {
-      toast.error('Введите корректный email');
-      return;
-    }
-    
-    if (!formData.password || formData.password.length < 1) {
-      toast.error('Введите пароль');
+    // Валидация
+    if (!validateLoginForm()) {
       return;
     }
     
@@ -86,6 +221,7 @@ export const AuthModal = () => {
         agreeTerms: false,
         agreeMarketing: false,
       });
+      setErrors({});
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error.message || 'Ошибка входа';
@@ -100,12 +236,8 @@ export const AuthModal = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
   
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Пароли не совпадают');
-      return;
-    }
-    if (!formData.agreeTerms) {
-      toast.error('Необходимо принять условия соглашения');
+    // Валидация
+    if (!validateRegisterForm()) {
       return;
     }
   
@@ -156,6 +288,7 @@ export const AuthModal = () => {
         agreeTerms: false,
         agreeMarketing: false,
       });
+      setErrors({});
     } catch (error: any) {
       console.error('Register error:', error);
       toast.error(error.message || 'Ошибка регистрации');
@@ -196,9 +329,27 @@ export const AuthModal = () => {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (errors.email) {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  onBlur={() => {
+                    const error = validateEmail(formData.email);
+                    if (error) {
+                      setErrors({ ...errors, email: error });
+                      toast.error(error);
+                    } else {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  className={errors.email ? 'border-destructive' : ''}
                   required
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -207,9 +358,27 @@ export const AuthModal = () => {
                   id="firstName"
                   type="text"
                   value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, firstName: e.target.value });
+                    if (errors.firstName) {
+                      setErrors({ ...errors, firstName: '' });
+                    }
+                  }}
+                  onBlur={() => {
+                    const error = validateFirstName(formData.firstName);
+                    if (error) {
+                      setErrors({ ...errors, firstName: error });
+                      toast.error(error);
+                    } else {
+                      setErrors({ ...errors, firstName: '' });
+                    }
+                  }}
+                  className={errors.firstName ? 'border-destructive' : ''}
                   required
                 />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -218,8 +387,28 @@ export const AuthModal = () => {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, phone: e.target.value });
+                    if (errors.phone) {
+                      setErrors({ ...errors, phone: '' });
+                    }
+                  }}
+                  onBlur={() => {
+                    if (formData.phone) {
+                      const error = validatePhone(formData.phone);
+                      if (error) {
+                        setErrors({ ...errors, phone: error });
+                        toast.error(error);
+                      } else {
+                        setErrors({ ...errors, phone: '' });
+                      }
+                    }
+                  }}
+                  className={errors.phone ? 'border-destructive' : ''}
                 />
+                {errors.phone && (
+                  <p className="text-sm text-destructive">{errors.phone}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -229,7 +418,31 @@ export const AuthModal = () => {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (errors.password) {
+                        setErrors({ ...errors, password: '' });
+                      }
+                      // Также проверяем confirmPassword, если он уже заполнен
+                      if (formData.confirmPassword && errors.confirmPassword) {
+                        const confirmError = validateConfirmPassword(e.target.value, formData.confirmPassword);
+                        if (confirmError) {
+                          setErrors({ ...errors, confirmPassword: confirmError });
+                        } else {
+                          setErrors({ ...errors, confirmPassword: '' });
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const error = validatePassword(formData.password, false);
+                      if (error) {
+                        setErrors({ ...errors, password: error });
+                        toast.error(error);
+                      } else {
+                        setErrors({ ...errors, password: '' });
+                      }
+                    }}
+                    className={errors.password ? 'border-destructive' : ''}
                     required
                   />
                   <Button
@@ -242,6 +455,9 @@ export const AuthModal = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -251,24 +467,49 @@ export const AuthModal = () => {
                     id="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, confirmPassword: e.target.value });
+                      if (errors.confirmPassword) {
+                        setErrors({ ...errors, confirmPassword: '' });
+                      }
+                    }}
+                    onBlur={() => {
+                      const error = validateConfirmPassword(formData.password, formData.confirmPassword);
+                      if (error) {
+                        setErrors({ ...errors, confirmPassword: error });
+                        toast.error(error);
+                      } else {
+                        setErrors({ ...errors, confirmPassword: '' });
+                      }
+                    }}
+                    className={errors.confirmPassword ? 'border-destructive' : ''}
                     required
                   />
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="terms"
                   checked={formData.agreeTerms}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, agreeTerms: checked as boolean })
-                  }
+                  onCheckedChange={(checked) => {
+                    setFormData({ ...formData, agreeTerms: checked as boolean });
+                    if (errors.agreeTerms) {
+                      setErrors({ ...errors, agreeTerms: '' });
+                    }
+                  }}
+                  className={errors.agreeTerms ? 'border-destructive' : ''}
                 />
                 <label htmlFor="terms" className="text-sm">
                   Я принимаю условия пользовательского соглашения
                 </label>
               </div>
+              {errors.agreeTerms && (
+                <p className="text-sm text-destructive">{errors.agreeTerms}</p>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -304,9 +545,27 @@ export const AuthModal = () => {
                   id="login-email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (errors.email) {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  onBlur={() => {
+                    const error = validateEmail(formData.email);
+                    if (error) {
+                      setErrors({ ...errors, email: error });
+                      toast.error(error);
+                    } else {
+                      setErrors({ ...errors, email: '' });
+                    }
+                  }}
+                  className={errors.email ? 'border-destructive' : ''}
                   required
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -316,7 +575,22 @@ export const AuthModal = () => {
                     id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (errors.password) {
+                        setErrors({ ...errors, password: '' });
+                      }
+                    }}
+                    onBlur={() => {
+                      const error = validatePassword(formData.password, true);
+                      if (error) {
+                        setErrors({ ...errors, password: error });
+                        toast.error(error);
+                      } else {
+                        setErrors({ ...errors, password: '' });
+                      }
+                    }}
+                    className={errors.password ? 'border-destructive' : ''}
                     required
                   />
                   <Button
@@ -329,13 +603,16 @@ export const AuthModal = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive">{errors.password}</p>
+                )}
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Вход...' : 'Войти'}
               </Button>
 
-              <div className="flex justify-between text-sm">
+              <div className="flex flex-col items-center gap-2 text-sm">
                 <Button
                   type="button"
                   variant="link"

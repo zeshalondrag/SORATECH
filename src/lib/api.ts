@@ -39,6 +39,7 @@ export interface User {
   registrationDate?: string;
   deleted?: boolean;
   isDarkTheme?: boolean;
+  currency?: string;
   role?: {
     id: number;
     roleName: string;
@@ -291,6 +292,20 @@ export const usersApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  },
+
+  updateCurrency: async (currency: string): Promise<{ userId: number; currency: string; message: string }> => {
+    return apiRequest<{ userId: number; currency: string; message: string }>('/api/Users/currency', {
+      method: 'PUT',
+      body: JSON.stringify(currency),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  getCurrency: async (): Promise<{ currency: string }> => {
+    return apiRequest<{ currency: string }>('/api/Users/currency');
   },
 };
 

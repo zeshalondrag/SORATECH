@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2, Download, Upload, ArrowUpDown, Eye, RotateCcw, Archive } from 'lucide-react';
 import {
@@ -23,6 +23,8 @@ import { AdminDeleteModal } from './AdminDeleteModal';
 import { AdminEntityModal } from './AdminEntityModal';
 import { AdminOrderDetailsModal } from './AdminOrderDetailsModal';
 import { getEntityConfig, EntityType } from '@/lib/adminConfig';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { MaskedPhone } from '@/components/ui/MaskedPhone';
 
 interface AdminTableProps {
   entity: EntityType;
@@ -47,6 +49,8 @@ export const AdminTable = ({ entity, hideImportExport = false }: AdminTableProps
   const [allData, setAllData] = useState<any[]>([]);
   const [allEnrichedData, setAllEnrichedData] = useState<any[]>([]);
   const itemsPerPage = 10;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
   
   const isOrdersEntity = entity === 'orders';
   const isReviewsEntity = entity === 'reviews';
@@ -463,6 +467,80 @@ export const AdminTable = ({ entity, hideImportExport = false }: AdminTableProps
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
+  // Горячие клавиши
+  useKeyboardShortcuts([
+    {
+      key: 'n',
+      ctrl: true,
+      description: 'Создать новую запись',
+      action: () => {
+        if (!isOrdersEntity && !isReviewsEntity && !isUsersEntity && !showDeleted) {
+          setIsAddModalOpen(true);
+        }
+      },
+      preventDefault: true,
+    },
+    {
+      key: 'f',
+      ctrl: true,
+      description: 'Фокус на поле поиска',
+      action: () => {
+        searchInputRef.current?.focus();
+      },
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      description: 'Редактировать выбранную запись',
+      action: () => {
+        if (selectedItem && !isOrdersEntity && !isReviewsEntity && !isUsersEntity) {
+          setEditingItem(selectedItem);
+        } else if (paginatedData.length > 0 && !isOrdersEntity && !isReviewsEntity && !isUsersEntity) {
+          setEditingItem(paginatedData[0]);
+        }
+      },
+    },
+    {
+      key: 'Delete',
+      description: 'Удалить выбранную запись',
+      action: () => {
+        if (selectedItem && !showDeleted) {
+          setDeletingItem(selectedItem);
+        } else if (paginatedData.length > 0 && !showDeleted) {
+          setDeletingItem(paginatedData[0]);
+        }
+      },
+    },
+    {
+      key: 'd',
+      ctrl: true,
+      shift: true,
+      description: 'Переключить удаленные записи',
+      action: () => {
+        if (supportsSoftDelete) {
+          setShowDeleted(!showDeleted);
+          setCurrentPage(1);
+          loadData();
+        }
+      },
+      preventDefault: true,
+    },
+    {
+      key: 'd',
+      ctrl: true,
+      shift: true,
+      description: 'Переключить удаленные записи',
+      action: () => {
+        if (supportsSoftDelete) {
+          setShowDeleted(!showDeleted);
+          setCurrentPage(1);
+          loadData();
+        }
+      },
+      preventDefault: true,
+    },
+  ]);
+
   if (isLoading) {
     return <div>Загрузка...</div>;
   }
@@ -516,7 +594,8 @@ export const AdminTable = ({ entity, hideImportExport = false }: AdminTableProps
       {/* Search */}
       <div className="flex items-center gap-4">
         <Input
-          placeholder="Поиск..."
+          ref={searchInputRef}
+          placeholder="Поиск... (Ctrl+F)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="max-w-sm"
@@ -554,12 +633,26 @@ export const AdminTable = ({ entity, hideImportExport = false }: AdminTableProps
               </TableRow>
             ) : (
               paginatedData.map((item) => (
-                <TableRow key={item.id}>
-                  {config.columns.map((col) => (
-                    <TableCell key={col.field}>
-                      {col.render ? col.render(item) : item[col.field]?.toString() || '-'}
-                    </TableCell>
-                  ))}
+                <TableRow
+                  key={item.id}
+                  className={selectedItem?.id === item.id ? 'bg-muted/50' : 'cursor-pointer hover:bg-muted/30'}
+                  onClick={() => setSelectedItem(item)}
+                >
+                  {config.columns.map((col) => {
+                    // Специальная обработка для телефона пользователей
+                    if (entity === 'users' && col.field === 'phone' && item.phone) {
+                      return (
+                        <TableCell key={col.field}>
+                          <MaskedPhone phone={item.phone} showToggle={true} />
+                        </TableCell>
+                      );
+                    }
+                    return (
+                      <TableCell key={col.field}>
+                        {col.render ? col.render(item) : item[col.field]?.toString() || '-'}
+                      </TableCell>
+                    );
+                  })}
                   <TableCell>
                     <div className="flex gap-2">
                       {isOrdersEntity ? (

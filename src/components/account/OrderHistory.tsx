@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ordersApi, Order, statusOrdersApi, StatusOrder, orderItemsApi, OrderItem, productsApi } from '@/lib/api';
 import { OrderDetailsModal } from '@/components/account/OrderDetailsModal';
 import { useStore } from '@/stores/useStore';
+import { formatPrice } from '@/lib/currency';
 import {
   Pagination,
   PaginationContent,
@@ -21,7 +22,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 export const OrderHistory = () => {
-  const { user } = useStore();
+  const { user, currency } = useStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -265,7 +266,7 @@ export const OrderHistory = () => {
                               Всего товаров: <span className="font-medium">{totalItemsCount}</span>
                             </p>
                             <p className="text-base font-semibold mt-1">
-                              {order.totalAmount.toLocaleString('ru-RU')} ₽
+                              {formatPrice(order.totalAmount, currency)}
                             </p>
                           </div>
                         </div>

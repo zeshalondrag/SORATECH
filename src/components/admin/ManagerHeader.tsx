@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Bell } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Bell, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -7,6 +7,8 @@ import { useStore } from '@/stores/useStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { adminOrdersApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 
 interface ManagerHeaderProps {
   onSearch: (query: string) => void;
@@ -16,6 +18,8 @@ export const ManagerHeader = ({ onSearch }: ManagerHeaderProps) => {
   const { user } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -36,6 +40,34 @@ export const ManagerHeader = ({ onSearch }: ManagerHeaderProps) => {
     onSearch(searchQuery);
   };
 
+  // Горячие клавиши
+  useKeyboardShortcuts([
+    {
+      key: 'f',
+      ctrl: true,
+      description: 'Фокус на поле поиска',
+      action: () => {
+        searchInputRef.current?.focus();
+      },
+    },
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Быстрый поиск',
+      action: () => {
+        searchInputRef.current?.focus();
+      },
+    },
+    {
+      key: '/',
+      ctrl: true,
+      description: 'Показать справку по горячим клавишам',
+      action: () => {
+        setIsShortcutsModalOpen(true);
+      },
+    },
+  ]);
+
   return (
     <div className="bg-card border-b p-4">
       <div className="flex items-center gap-4">
@@ -44,8 +76,9 @@ export const ManagerHeader = ({ onSearch }: ManagerHeaderProps) => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               type="search"
-              placeholder="Поиск записей..."
+              placeholder="Поиск записей... (Ctrl+F или Ctrl+K)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -103,6 +136,11 @@ export const ManagerHeader = ({ onSearch }: ManagerHeaderProps) => {
           </div>
         </div>
       </div>
+
+      <KeyboardShortcutsModal
+        open={isShortcutsModalOpen}
+        onOpenChange={setIsShortcutsModalOpen}
+      />
     </div>
   );
 };

@@ -305,8 +305,8 @@ const Catalog = () => {
               </div>
 
               {manufacturers.length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-3">Производитель</h3>
+              <div>
+                <h3 className="font-semibold mb-3">Производитель</h3>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {manufacturers.map((manufacturer) => (
                       <label key={manufacturer} className="flex items-center gap-2 cursor-pointer">
@@ -315,7 +315,7 @@ const Catalog = () => {
                           onCheckedChange={() => handleManufacturerToggle(manufacturer)}
                         />
                         <span className="text-sm">{manufacturer}</span>
-                      </label>
+                  </label>
                     ))}
                   </div>
                 </div>
@@ -374,28 +374,28 @@ const Catalog = () => {
 
             {/* Pagination */}
             {totalPages > 0 && (
-              <div className="mt-8 flex items-center justify-between">
-                <Select value={perPage} onValueChange={setPerPage}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Товаров на странице" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="24">24 товара</SelectItem>
-                    <SelectItem value="36">36 товаров</SelectItem>
-                    <SelectItem value="48">48 товаров</SelectItem>
-                    <SelectItem value="100">100 товаров</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="mt-8 flex items-center justify-between">
+              <Select value={perPage} onValueChange={setPerPage}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Товаров на странице" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="24">24 товара</SelectItem>
+                  <SelectItem value="36">36 товаров</SelectItem>
+                  <SelectItem value="48">48 товаров</SelectItem>
+                  <SelectItem value="100">100 товаров</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <div className="flex gap-2">
+              <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    Предыдущая
-                  </Button>
+                  Предыдущая
+                </Button>
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum: number;
                     if (totalPages <= 5) {
@@ -415,7 +415,7 @@ const Catalog = () => {
                         onClick={() => setCurrentPage(pageNum)}
                       >
                         {pageNum}
-                      </Button>
+                </Button>
                     );
                   })}
                   <Button 
@@ -424,10 +424,10 @@ const Catalog = () => {
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                   >
-                    Следующая
-                  </Button>
-                </div>
+                  Следующая
+                </Button>
               </div>
+            </div>
             )}
           </div>
         </div>
