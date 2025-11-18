@@ -21,18 +21,26 @@ const categorySlugMap: Record<string, string> = {
   'Корпуса': 'case',
 };
 
-// Маппинг названий категорий на URL изображений
-const categoryImageMap: Record<string, string> = {
-  'Процессоры': 'https://storage.yandexcloud.net/soratech/%D0%9F%D1%80%D0%BE%D1%86%D0%B5%D1%81%D1%81%D0%BE%D1%80%D1%8B/AMD%20Ryzen%207%207800X3D%20OEM.png',
-  'Видеокарты': 'https://storage.yandexcloud.net/soratech/%D0%92%D0%B8%D0%B4%D0%B5%D0%BE%D0%BA%D0%B0%D1%80%D1%82%D1%8B/NVIDIA%20GeForce%20RTX%205080%20Gigabyte%20GAMING%20OC%2016Gb%20(GV-N5080GAMING%20OC-16GD).png',
-  'Материнские платы': 'https://storage.yandexcloud.net/soratech/%D0%9C%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%BD%D1%81%D0%BA%D0%B8%D0%B5%20%D0%BF%D0%BB%D0%B0%D1%82%D1%8B/ASUS%20ROG%20STRIX%20X870E-H%20GAMING%20WIFI7.png',
-  'Оперативная память': 'https://storage.yandexcloud.net/soratech/%D0%9E%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%B8%D0%B2%D0%BD%D0%B0%D1%8F%20%D0%BF%D0%B0%D0%BC%D1%8F%D1%82%D1%8C/32Gb%20DDR5%206000MHz%20ADATA%20XPG%20Lancer%20Blade%20RGB%20Black%20AX5U6000C3016G-DTLABRBK%202x16Gb%20KIT.png',
-  'Накопители SSD': 'https://storage.yandexcloud.net/soratech/SSD%20%D0%BD%D0%B0%D0%BA%D0%BE%D0%BF%D0%B8%D1%82%D0%B5%D0%BB%D0%B8/SSD%201Tb%20Samsung%20990%20PRO%20(MZ-V9P1T0BW).png',
-  'Жёсткие диски (HDD)': 'https://storage.yandexcloud.net/soratech/HDD%20%D0%BD%D0%B0%D0%BA%D0%BE%D0%BF%D0%B8%D1%82%D0%B5%D0%BB%D0%B8/2Tb%20SATA-III%20Seagate%20Barracuda%20(ST2000DM008).png',
-  'Система охлаждения': 'https://storage.yandexcloud.net/soratech/%D0%9E%D1%85%D0%BB%D0%B0%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5/ID-COOLING%20SE-226-XT%20BLACK.png',
-  'Блок питания': 'https://storage.yandexcloud.net/soratech/%D0%91%D0%BB%D0%BE%D0%BA%D0%B8%20%D0%BF%D0%B8%D1%82%D0%B0%D0%BD%D0%B8%D1%8F/1000W%20GamerStorm%20(DeepCool)%20PN1000M.png',
-  'Корпуса': 'https://storage.yandexcloud.net/soratech/%D0%9A%D0%BE%D1%80%D0%BF%D1%83%D1%81%D0%B0/Lian%20Li%20O11%20Dynamic%20Mini%20V2%20Black.png',
-};
+// Порядок отображения категорий с возможными вариантами названий
+const categoryOrderMap: Map<string, number> = new Map([
+  ['Процессоры', 1],
+  ['Видеокарты', 2],
+  ['Видеокарта', 2], // альтернативное название
+  ['Материнские платы', 3],
+  ['Материнская плата', 3], // альтернативное название
+  ['Оперативная память', 4],
+  ['Накопители SSD', 5],
+  ['SSD накопители', 5], // альтернативное название
+  ['Жёсткие диски (HDD)', 6],
+  ['Жёсткие диски HDD', 6], // альтернативное название
+  ['HDD накопители', 6], // альтернативное название
+  ['Система охлаждения', 7],
+  ['Охлаждение', 7], // альтернативное название
+  ['Блок питания', 8],
+  ['Блоки питания', 8], // альтернативное название
+  ['Корпуса', 9],
+  ['Корпус', 9], // альтернативное название
+]);
 
 
 interface CategoryWithCount extends Category {
@@ -58,11 +66,18 @@ const Categories = () => {
         productsApi.getAll(),
       ]);
 
-      // Подсчитываем количество товаров для каждой категории
+      // Подсчитываем количество товаров для каждой категории и выбираем случайное изображение
       const categoriesWithCount: CategoryWithCount[] = categoriesData.map((category) => {
-        const productCount = productsData.filter((p) => p.categoryId === category.id).length;
-        const imageUrl = categoryImageMap[category.nameCategory] || '';
+        const categoryProducts = productsData.filter((p) => p.categoryId === category.id && !p.deleted);
+        const productCount = categoryProducts.length;
         const slug = categorySlugMap[category.nameCategory] || category.id.toString();
+        
+        // Выбираем случайное изображение из продуктов категории
+        let imageUrl = '';
+        if (categoryProducts.length > 0) {
+          const randomProduct = categoryProducts[Math.floor(Math.random() * categoryProducts.length)];
+          imageUrl = randomProduct.imageUrl || '';
+        }
         
         return {
           ...category,
@@ -72,7 +87,26 @@ const Categories = () => {
         };
       });
 
-      setCategories(categoriesWithCount);
+      // Отладочный вывод для проверки названий категорий
+      console.log('Категории из API:', categoriesWithCount.map(c => c.nameCategory));
+
+      // Сортируем категории по заданному порядку
+      const sortedCategories = categoriesWithCount.sort((a, b) => {
+        const orderA = categoryOrderMap.get(a.nameCategory) ?? 999;
+        const orderB = categoryOrderMap.get(b.nameCategory) ?? 999;
+        
+        // Если категория не найдена в маппинге, выводим предупреждение
+        if (orderA === 999) {
+          console.warn(`Категория "${a.nameCategory}" не найдена в маппинге порядка`);
+        }
+        if (orderB === 999) {
+          console.warn(`Категория "${b.nameCategory}" не найдена в маппинге порядка`);
+        }
+        
+        return orderA - orderB;
+      });
+
+      setCategories(sortedCategories);
     } catch (error: any) {
       console.error('Error loading categories:', error);
       toast.error('Ошибка загрузки категорий');
