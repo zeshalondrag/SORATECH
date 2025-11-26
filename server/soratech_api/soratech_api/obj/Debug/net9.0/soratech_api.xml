@@ -1,0 +1,1353 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>soratech_api</name>
+    </assembly>
+    <members>
+        <member name="T:soratech_api.Controllers.AddressesController">
+            <summary>
+            Контроллер для управления адресами пользователей
+            </summary>
+            <remarks>
+            Управление адресами: получение, создание, обновление, удаление адресов пользователей. Пользователи могут управлять только своими адресами.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.AddressesController.GetAddresses">
+            <summary>
+            Получить список всех адресов текущего пользователя
+            </summary>
+            <returns>Список адресов пользователя</returns>
+            <response code="200">Список адресов успешно получен</response>
+            <response code="401">Не авторизован</response>
+            <response code="400">Некорректный идентификатор пользователя</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AddressesController.GetAddress(System.Nullable{System.Int32})">
+            <summary>
+            Получить адрес по ID
+            </summary>
+            <param name="id">Идентификатор адреса</param>
+            <returns>Данные адреса</returns>
+            <response code="200">Адрес найден</response>
+            <response code="404">Адрес не найден</response>
+            <response code="401">Не авторизован</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AddressesController.PutAddress(System.Nullable{System.Int32},soratech_api.Models.Address)">
+            <summary>
+            Обновить адрес
+            </summary>
+            <param name="id">Идентификатор адреса</param>
+            <param name="address">Обновленные данные адреса</param>
+            <returns>Результат операции</returns>
+            <response code="204">Адрес успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Адрес не найден</response>
+            <response code="401">Не авторизован</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AddressesController.PostAddress(soratech_api.Models.Address)">
+            <summary>
+            Создать новый адрес
+            </summary>
+            <param name="address">Данные нового адреса</param>
+            <returns>Созданный адрес</returns>
+            <response code="201">Адрес успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AddressesController.DeleteAddress(System.Nullable{System.Int32})">
+            <summary>
+            Удалить адрес
+            </summary>
+            <param name="id">Идентификатор адреса</param>
+            <returns>Результат операции</returns>
+            <response code="204">Адрес успешно удален</response>
+            <response code="404">Адрес не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+        </member>
+        <member name="T:soratech_api.Controllers.AuditLogsController">
+            <summary>
+            Контроллер для просмотра журнала аудита
+            </summary>
+            <remarks>
+            Просмотр журнала аудита: получение списка всех записей аудита и записей по ID. Требуется роль Администратор.
+            Журнал аудита автоматически заполняется триггерами базы данных при всех изменениях данных.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.AuditLogsController.GetAuditLogs">
+            <summary>
+            Получить список всех записей аудита
+            </summary>
+            <returns>Список записей аудита</returns>
+            <response code="200">Список записей аудита успешно получен</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AuditLogsController.GetAuditLog(System.Nullable{System.Int32})">
+            <summary>
+            Получить запись аудита по ID
+            </summary>
+            <param name="id">Идентификатор записи аудита</param>
+            <returns>Данные записи аудита</returns>
+            <response code="200">Запись аудита найдена</response>
+            <response code="404">Запись аудита не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.AuthController">
+            <summary>
+            Контроллер для аутентификации и авторизации пользователей
+            </summary>
+            <remarks>
+            Управление аутентификацией: вход, регистрация, валидация токена, обновление профиля, сброс пароля.
+            Использует JWT токены для авторизации и PostgreSQL pgcrypto для хеширования паролей.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.AuthController.Login(soratech_api.Models.DTO.LoginDto)">
+            <summary>
+            Вход в систему
+            </summary>
+            <param name="loginDto">Данные для входа (email и пароль)</param>
+            <returns>JWT токен и информация о пользователе</returns>
+            <response code="200">Успешный вход, возвращает JWT токен и данные пользователя</response>
+            <response code="400">Некорректные данные (email или пароль не указаны)</response>
+            <response code="401">Неверный email или пароль</response>
+            <response code="500">Внутренняя ошибка сервера</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AuthController.Register(soratech_api.Models.DTO.RegisterDto)">
+            <summary>
+            Регистрация нового пользователя
+            </summary>
+            <param name="registerDto">Данные для регистрации (email, пароль, имя, телефон)</param>
+            <returns>JWT токен и информация о пользователе</returns>
+            <response code="200">Пользователь успешно зарегистрирован, возвращает JWT токен и данные пользователя</response>
+            <response code="400">Некорректные данные (не все поля заполнены, email или телефон уже заняты)</response>
+            <response code="500">Внутренняя ошибка сервера</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AuthController.ValidateToken">
+            <summary>
+            Валидация JWT токена
+            </summary>
+            <returns>Информация о пользователе из токена</returns>
+            <response code="200">Токен валиден, возвращает информацию о пользователе</response>
+            <response code="401">Токен недействителен или отсутствует</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AuthController.PutUser(System.Int32,soratech_api.Models.DTO.UserUpdateDto)">
+            <summary>
+            Обновить профиль пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <param name="updated">Обновленные данные профиля</param>
+            <returns>Результат операции</returns>
+            <response code="204">Профиль успешно обновлен</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Пользователь не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.AuthController.ResetPassword(soratech_api.Models.DTO.ResetPasswordDto)">
+            <summary>
+            Сбросить пароль пользователя
+            </summary>
+            <param name="dto">Данные для сброса пароля (email и новый пароль)</param>
+            <returns>Результат операции</returns>
+            <response code="200">Пароль успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="500">Ошибка при хешировании пароля</response>
+        </member>
+        <member name="T:soratech_api.Controllers.BackupController">
+            <summary>
+            Контроллер для управления резервными копиями базы данных
+            </summary>
+            <remarks>
+            Управление резервными копиями: создание SQL и JSON резервных копий базы данных. Требуется роль Администратор.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.BackupController.CreateBackup">
+            <summary>
+            Создать резервную копию базы данных
+            </summary>
+            <returns>Информация о созданных файлах резервной копии</returns>
+            <response code="200">Резервная копия успешно создана</response>
+            <response code="400">Ошибка при создании SQL-бэкапа</response>
+            <response code="500">Внутренняя ошибка сервера</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+            <remarks>
+            Создает два файла резервной копии:
+            - SQL файл (backup_YYYYMMDD_HHmmss.sql) - полная SQL резервная копия через pg_dump
+            - JSON файл (backup_YYYYMMDD_HHmmss.json) - данные всех таблиц в формате JSON
+            </remarks>
+        </member>
+        <member name="T:soratech_api.Controllers.CartsController">
+            <summary>
+            Контроллер для управления корзиной покупок
+            </summary>
+            <remarks>
+            Управление корзиной: получение, создание, обновление, удаление товаров в корзине пользователя
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.CartsController.GetCarts">
+            <summary>
+            Получить список всех товаров в корзине
+            </summary>
+            <returns>Список товаров в корзине</returns>
+            <response code="200">Список товаров в корзине успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CartsController.GetCart(System.Nullable{System.Int32})">
+            <summary>
+            Получить товар в корзине по ID
+            </summary>
+            <param name="id">Идентификатор записи в корзине</param>
+            <returns>Данные товара в корзине</returns>
+            <response code="200">Товар в корзине найден</response>
+            <response code="404">Товар в корзине не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CartsController.PutCart(System.Nullable{System.Int32},soratech_api.Models.Cart)">
+            <summary>
+            Обновить товар в корзине
+            </summary>
+            <param name="id">Идентификатор записи в корзине</param>
+            <param name="cart">Обновленные данные товара в корзине</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар в корзине успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Товар в корзине не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CartsController.PostCart(soratech_api.Models.Cart)">
+            <summary>
+            Добавить товар в корзину
+            </summary>
+            <param name="cart">Данные товара для добавления в корзину</param>
+            <returns>Созданная запись в корзине</returns>
+            <response code="201">Товар успешно добавлен в корзину</response>
+            <response code="400">Некорректные данные</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CartsController.DeleteCart(System.Nullable{System.Int32})">
+            <summary>
+            Удалить товар из корзины
+            </summary>
+            <param name="id">Идентификатор записи в корзине</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар успешно удален из корзины</response>
+            <response code="404">Товар в корзине не найден</response>
+            <response code="400">Ошибка при удалении</response>
+        </member>
+        <member name="T:soratech_api.Controllers.CategoriesController">
+            <summary>
+            Контроллер для управления категориями товаров
+            </summary>
+            <remarks>
+            Управление категориями: получение, создание, обновление, удаление категорий товаров
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.GetCategories(System.Boolean)">
+            <summary>
+            Получить список всех категорий
+            </summary>
+            <param name="includeDeleted">Включать ли удаленные категории в результат (по умолчанию: false)</param>
+            <returns>Список категорий</returns>
+            <response code="200">Список категорий успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.GetCategory(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить категорию по ID
+            </summary>
+            <param name="id">Идентификатор категории</param>
+            <param name="includeDeleted">Включать ли удаленные категории (по умолчанию: false)</param>
+            <returns>Данные категории</returns>
+            <response code="200">Категория найдена</response>
+            <response code="404">Категория не найдена</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.PutCategory(System.Nullable{System.Int32},soratech_api.Models.Category)">
+            <summary>
+            Обновить данные категории
+            </summary>
+            <param name="id">Идентификатор категории</param>
+            <param name="category">Обновленные данные категории</param>
+            <returns>Результат операции</returns>
+            <response code="204">Категория успешно обновлена</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Категория не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.PostCategory(soratech_api.Models.Category)">
+            <summary>
+            Создать новую категорию
+            </summary>
+            <param name="category">Данные новой категории</param>
+            <returns>Созданная категория</returns>
+            <response code="201">Категория успешно создана</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.DeleteCategory(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить категорию
+            </summary>
+            <param name="id">Идентификатор категории</param>
+            <returns>Результат операции</returns>
+            <response code="204">Категория успешно удалена</response>
+            <response code="404">Категория не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.HardDeleteCategory(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить категорию
+            </summary>
+            <param name="id">Идентификатор категории</param>
+            <returns>Результат операции</returns>
+            <response code="204">Категория успешно удалена</response>
+            <response code="404">Категория не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CategoriesController.RestoreCategory(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленную категорию
+            </summary>
+            <param name="id">Идентификатор категории</param>
+            <returns>Восстановленная категория</returns>
+            <response code="200">Категория успешно восстановлена</response>
+            <response code="400">Категория не была удалена или ошибка при восстановлении</response>
+            <response code="404">Категория не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.CharacteristicsController">
+            <summary>
+            Контроллер для управления характеристиками товаров
+            </summary>
+            <remarks>
+            Управление характеристиками: получение, создание, обновление, удаление характеристик товаров
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.GetCharacteristics(System.Boolean)">
+            <summary>
+            Получить список всех характеристик
+            </summary>
+            <param name="includeDeleted">Включать ли удаленные характеристики в результат (по умолчанию: false)</param>
+            <returns>Список характеристик</returns>
+            <response code="200">Список характеристик успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.GetCharacteristic(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить характеристику по ID
+            </summary>
+            <param name="id">Идентификатор характеристики</param>
+            <param name="includeDeleted">Включать ли удаленные характеристики (по умолчанию: false)</param>
+            <returns>Данные характеристики</returns>
+            <response code="200">Характеристика найдена</response>
+            <response code="404">Характеристика не найдена</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.PutCharacteristic(System.Nullable{System.Int32},soratech_api.Models.Characteristic)">
+            <summary>
+            Обновить данные характеристики
+            </summary>
+            <param name="id">Идентификатор характеристики</param>
+            <param name="characteristic">Обновленные данные характеристики</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика успешно обновлена</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Характеристика не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.PostCharacteristic(soratech_api.Models.Characteristic)">
+            <summary>
+            Создать новую характеристику
+            </summary>
+            <param name="characteristic">Данные новой характеристики</param>
+            <returns>Созданная характеристика</returns>
+            <response code="201">Характеристика успешно создана</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.DeleteCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить характеристику
+            </summary>
+            <param name="id">Идентификатор характеристики</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика успешно удалена</response>
+            <response code="404">Характеристика не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.HardDeleteCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить характеристику
+            </summary>
+            <param name="id">Идентификатор характеристики</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика успешно удалена</response>
+            <response code="404">Характеристика не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.CharacteristicsController.RestoreCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленную характеристику
+            </summary>
+            <param name="id">Идентификатор характеристики</param>
+            <returns>Восстановленная характеристика</returns>
+            <response code="200">Характеристика успешно восстановлена</response>
+            <response code="400">Характеристика не была удалена или ошибка при восстановлении</response>
+            <response code="404">Характеристика не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.DeliveryTypesController">
+            <summary>
+            Контроллер для управления типами доставки
+            </summary>
+            <remarks>
+            Управление типами доставки: получение, создание, обновление, удаление типов доставки
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.DeliveryTypesController.GetDeliveryTypes">
+            <summary>
+            Получить список всех типов доставки
+            </summary>
+            <returns>Список типов доставки</returns>
+            <response code="200">Список типов доставки успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.DeliveryTypesController.GetDeliveryType(System.Nullable{System.Int32})">
+            <summary>
+            Получить тип доставки по ID
+            </summary>
+            <param name="id">Идентификатор типа доставки</param>
+            <returns>Данные типа доставки</returns>
+            <response code="200">Тип доставки найден</response>
+            <response code="404">Тип доставки не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.DeliveryTypesController.PutDeliveryType(System.Nullable{System.Int32},soratech_api.Models.DeliveryType)">
+            <summary>
+            Обновить тип доставки
+            </summary>
+            <param name="id">Идентификатор типа доставки</param>
+            <param name="deliveryType">Обновленные данные типа доставки</param>
+            <returns>Результат операции</returns>
+            <response code="204">Тип доставки успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Тип доставки не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.DeliveryTypesController.PostDeliveryType(soratech_api.Models.DeliveryType)">
+            <summary>
+            Создать новый тип доставки
+            </summary>
+            <param name="deliveryType">Данные нового типа доставки</param>
+            <returns>Созданный тип доставки</returns>
+            <response code="201">Тип доставки успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.DeliveryTypesController.DeleteDeliveryType(System.Nullable{System.Int32})">
+            <summary>
+            Удалить тип доставки
+            </summary>
+            <param name="id">Идентификатор типа доставки</param>
+            <returns>Результат операции</returns>
+            <response code="204">Тип доставки успешно удален</response>
+            <response code="404">Тип доставки не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.FavoritesController">
+            <summary>
+            Контроллер для управления избранными товарами
+            </summary>
+            <remarks>
+            Управление избранными товарами: получение, создание, обновление, удаление избранных товаров пользователя
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.FavoritesController.GetFavorites">
+            <summary>
+            Получить список всех избранных товаров
+            </summary>
+            <returns>Список избранных товаров</returns>
+            <response code="200">Список избранных товаров успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.FavoritesController.GetFavorite(System.Nullable{System.Int32})">
+            <summary>
+            Получить избранный товар по ID
+            </summary>
+            <param name="id">Идентификатор записи избранного</param>
+            <returns>Данные избранного товара</returns>
+            <response code="200">Избранный товар найден</response>
+            <response code="404">Избранный товар не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.FavoritesController.PutFavorite(System.Nullable{System.Int32},soratech_api.Models.Favorite)">
+            <summary>
+            Обновить избранный товар
+            </summary>
+            <param name="id">Идентификатор записи избранного</param>
+            <param name="favorite">Обновленные данные избранного товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Избранный товар успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Избранный товар не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.FavoritesController.PostFavorite(soratech_api.Models.Favorite)">
+            <summary>
+            Добавить товар в избранное
+            </summary>
+            <param name="favorite">Данные товара для добавления в избранное</param>
+            <returns>Созданная запись избранного</returns>
+            <response code="201">Товар успешно добавлен в избранное</response>
+            <response code="400">Некорректные данные</response>
+        </member>
+        <member name="M:soratech_api.Controllers.FavoritesController.DeleteFavorite(System.Nullable{System.Int32})">
+            <summary>
+            Удалить товар из избранного
+            </summary>
+            <param name="id">Идентификатор записи избранного</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар успешно удален из избранного</response>
+            <response code="404">Избранный товар не найден</response>
+            <response code="400">Ошибка при удалении</response>
+        </member>
+        <member name="T:soratech_api.Controllers.OrderItemsController">
+            <summary>
+            Контроллер для управления элементами заказов
+            </summary>
+            <remarks>
+            Управление элементами заказов: получение, создание, обновление, удаление элементов заказов
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.OrderItemsController.GetOrderItems">
+            <summary>
+            Получить список всех элементов заказов
+            </summary>
+            <returns>Список элементов заказов</returns>
+            <response code="200">Список элементов заказов успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrderItemsController.GetOrderItem(System.Nullable{System.Int32})">
+            <summary>
+            Получить элемент заказа по ID
+            </summary>
+            <param name="id">Идентификатор элемента заказа</param>
+            <returns>Данные элемента заказа</returns>
+            <response code="200">Элемент заказа найден</response>
+            <response code="404">Элемент заказа не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrderItemsController.PutOrderItem(System.Nullable{System.Int32},soratech_api.Models.OrderItem)">
+            <summary>
+            Обновить элемент заказа
+            </summary>
+            <param name="id">Идентификатор элемента заказа</param>
+            <param name="orderItem">Обновленные данные элемента заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Элемент заказа успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Элемент заказа не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrderItemsController.PostOrderItem(soratech_api.Models.OrderItem)">
+            <summary>
+            Создать новый элемент заказа
+            </summary>
+            <param name="orderItem">Данные нового элемента заказа</param>
+            <returns>Созданный элемент заказа</returns>
+            <response code="201">Элемент заказа успешно создан</response>
+            <response code="400">Некорректные данные</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrderItemsController.DeleteOrderItem(System.Nullable{System.Int32})">
+            <summary>
+            Удалить элемент заказа
+            </summary>
+            <param name="id">Идентификатор элемента заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Элемент заказа успешно удален</response>
+            <response code="404">Элемент заказа не найден</response>
+            <response code="400">Ошибка при удалении</response>
+        </member>
+        <member name="T:soratech_api.Controllers.OrdersController">
+            <summary>
+            Контроллер для управления заказами
+            </summary>
+            <remarks>
+            Управление заказами: создание, получение, обновление, удаление заказов. При создании заказа автоматически обновляется количество товаров на складе и счетчик продаж.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.OrdersController.GetOrders">
+            <summary>
+            Получить список всех заказов
+            </summary>
+            <returns>Список заказов</returns>
+            <response code="200">Список заказов успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrdersController.GetOrder(System.Nullable{System.Int32})">
+            <summary>
+            Получить заказ по ID
+            </summary>
+            <param name="id">Идентификатор заказа</param>
+            <returns>Данные заказа</returns>
+            <response code="200">Заказ найден</response>
+            <response code="404">Заказ не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrdersController.PutOrder(System.Nullable{System.Int32},soratech_api.Models.Order)">
+            <summary>
+            Обновить данные заказа
+            </summary>
+            <param name="id">Идентификатор заказа</param>
+            <param name="order">Обновленные данные заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Заказ успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Заказ не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.OrdersController.PostOrder(soratech_api.Models.Order)">
+            <summary>
+            Создать новый заказ
+            </summary>
+            <param name="order">Данные нового заказа с товарами (OrderItems)</param>
+            <returns>Созданный заказ</returns>
+            <response code="201">Заказ успешно создан</response>
+            <response code="400">Некорректные данные (заказ должен содержать товары, товар не найден, недостаточно товара на складе)</response>
+            <remarks>
+            При создании заказа автоматически:
+            - Проверяется наличие товаров на складе
+            - Уменьшается количество товаров на складе (StockQuantity)
+            - Увеличивается счетчик продаж (SalesCount)
+            Все операции выполняются в транзакции для обеспечения целостности данных.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.OrdersController.DeleteOrder(System.Nullable{System.Int32})">
+            <summary>
+            Удалить заказ
+            </summary>
+            <param name="id">Идентификатор заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Заказ успешно удален</response>
+            <response code="404">Заказ не найден</response>
+            <response code="400">Ошибка при удалении</response>
+        </member>
+        <member name="T:soratech_api.Controllers.PaymentTypesController">
+            <summary>
+            Контроллер для управления типами оплаты
+            </summary>
+            <remarks>
+            Управление типами оплаты: получение, создание, обновление, удаление типов оплаты
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.PaymentTypesController.GetPaymentTypes">
+            <summary>
+            Получить список всех типов оплаты
+            </summary>
+            <returns>Список типов оплаты</returns>
+            <response code="200">Список типов оплаты успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.PaymentTypesController.GetPaymentType(System.Nullable{System.Int32})">
+            <summary>
+            Получить тип оплаты по ID
+            </summary>
+            <param name="id">Идентификатор типа оплаты</param>
+            <returns>Данные типа оплаты</returns>
+            <response code="200">Тип оплаты найден</response>
+            <response code="404">Тип оплаты не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.PaymentTypesController.PutPaymentType(System.Nullable{System.Int32},soratech_api.Models.PaymentType)">
+            <summary>
+            Обновить тип оплаты
+            </summary>
+            <param name="id">Идентификатор типа оплаты</param>
+            <param name="paymentType">Обновленные данные типа оплаты</param>
+            <returns>Результат операции</returns>
+            <response code="204">Тип оплаты успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Тип оплаты не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.PaymentTypesController.PostPaymentType(soratech_api.Models.PaymentType)">
+            <summary>
+            Создать новый тип оплаты
+            </summary>
+            <param name="paymentType">Данные нового типа оплаты</param>
+            <returns>Созданный тип оплаты</returns>
+            <response code="201">Тип оплаты успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.PaymentTypesController.DeletePaymentType(System.Nullable{System.Int32})">
+            <summary>
+            Удалить тип оплаты
+            </summary>
+            <param name="id">Идентификатор типа оплаты</param>
+            <returns>Результат операции</returns>
+            <response code="204">Тип оплаты успешно удален</response>
+            <response code="404">Тип оплаты не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.ProductCharacteristicsController">
+            <summary>
+            Контроллер для управления характеристиками товаров
+            </summary>
+            <remarks>
+            Управление связями товаров и их характеристик: получение, создание, обновление, удаление характеристик товаров
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.GetProductCharacteristics(System.Boolean)">
+            <summary>
+            Получить список всех характеристик товаров
+            </summary>
+            <param name="includeDeleted">Включать ли удаленные записи в результат (по умолчанию: false)</param>
+            <returns>Список характеристик товаров</returns>
+            <response code="200">Список характеристик товаров успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.GetProductCharacteristic(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить характеристику товара по ID
+            </summary>
+            <param name="id">Идентификатор характеристики товара</param>
+            <param name="includeDeleted">Включать ли удаленные записи (по умолчанию: false)</param>
+            <returns>Данные характеристики товара</returns>
+            <response code="200">Характеристика товара найдена</response>
+            <response code="404">Характеристика товара не найдена</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.PutProductCharacteristic(System.Nullable{System.Int32},soratech_api.Models.ProductCharacteristic)">
+            <summary>
+            Обновить характеристику товара
+            </summary>
+            <param name="id">Идентификатор характеристики товара</param>
+            <param name="productCharacteristic">Обновленные данные характеристики товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика товара успешно обновлена</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Характеристика товара не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.PostProductCharacteristic(soratech_api.Models.ProductCharacteristic)">
+            <summary>
+            Создать новую характеристику товара
+            </summary>
+            <param name="productCharacteristic">Данные новой характеристики товара</param>
+            <returns>Созданная характеристика товара</returns>
+            <response code="201">Характеристика товара успешно создана</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.DeleteProductCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить характеристику товара
+            </summary>
+            <param name="id">Идентификатор характеристики товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика товара успешно удалена</response>
+            <response code="404">Характеристика товара не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.HardDeleteProductCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить характеристику товара
+            </summary>
+            <param name="id">Идентификатор характеристики товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Характеристика товара успешно удалена</response>
+            <response code="404">Характеристика товара не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductCharacteristicsController.RestoreProductCharacteristic(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленную характеристику товара
+            </summary>
+            <param name="id">Идентификатор характеристики товара</param>
+            <returns>Восстановленная характеристика товара</returns>
+            <response code="200">Характеристика товара успешно восстановлена</response>
+            <response code="400">Характеристика товара не была удалена или ошибка при восстановлении</response>
+            <response code="404">Характеристика товара не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.ProductsController">
+            <summary>
+            Контроллер для управления товарами
+            </summary>
+            <remarks>
+            Управление товарами: получение, создание, обновление, удаление товаров
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.GetProducts(System.Boolean)">
+            <summary>
+            Получить список всех товаров
+            </summary>
+            <param name="includeDeleted">Включать ли удаленные товары в результат (по умолчанию: false)</param>
+            <returns>Список товаров</returns>
+            <response code="200">Список товаров успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.GetProduct(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить товар по ID
+            </summary>
+            <param name="id">Идентификатор товара</param>
+            <param name="includeDeleted">Включать ли удаленные товары (по умолчанию: false)</param>
+            <returns>Данные товара</returns>
+            <response code="200">Товар найден</response>
+            <response code="404">Товар не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.PutProduct(System.Nullable{System.Int32},soratech_api.Models.Product)">
+            <summary>
+            Обновить данные товара
+            </summary>
+            <param name="id">Идентификатор товара</param>
+            <param name="product">Обновленные данные товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Товар не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.PostProduct(soratech_api.Models.Product)">
+            <summary>
+            Создать новый товар
+            </summary>
+            <param name="product">Данные нового товара</param>
+            <returns>Созданный товар</returns>
+            <response code="201">Товар успешно создан</response>
+            <response code="400">Некорректные данные</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.DeleteProduct(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить товар
+            </summary>
+            <param name="id">Идентификатор товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар успешно удален</response>
+            <response code="404">Товар не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.HardDeleteProduct(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить товар
+            </summary>
+            <param name="id">Идентификатор товара</param>
+            <returns>Результат операции</returns>
+            <response code="204">Товар успешно удален</response>
+            <response code="404">Товар не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ProductsController.RestoreProduct(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленный товар
+            </summary>
+            <param name="id">Идентификатор товара</param>
+            <returns>Восстановленный товар</returns>
+            <response code="200">Товар успешно восстановлен</response>
+            <response code="400">Товар не был удален или ошибка при восстановлении</response>
+            <response code="404">Товар не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.ReviewsController">
+            <summary>
+            Контроллер для управления отзывами на товары
+            </summary>
+            <remarks>
+            Управление отзывами: получение, создание, обновление, удаление отзывов. 
+            Пользователи могут оставлять отзывы только на товары, которые они приобрели и получили.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.GetReviews(System.Boolean)">
+            <summary>
+            Получить список всех отзывов
+            </summary>
+            <param name="includeDeleted">Включать ли удаленные отзывы в результат (по умолчанию: false)</param>
+            <returns>Список отзывов</returns>
+            <response code="200">Список отзывов успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.GetReview(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить отзыв по ID
+            </summary>
+            <param name="id">Идентификатор отзыва</param>
+            <param name="includeDeleted">Включать ли удаленные отзывы (по умолчанию: false)</param>
+            <returns>Данные отзыва</returns>
+            <response code="200">Отзыв найден</response>
+            <response code="404">Отзыв не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.PutReview(System.Nullable{System.Int32},soratech_api.Models.Review)">
+            <summary>
+            Обновить отзыв
+            </summary>
+            <param name="id">Идентификатор отзыва</param>
+            <param name="review">Обновленные данные отзыва</param>
+            <returns>Результат операции</returns>
+            <response code="204">Отзыв успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Отзыв не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.PostReview(soratech_api.Models.Review)">
+            <summary>
+            Создать новый отзыв на товар
+            </summary>
+            <param name="review">Данные нового отзыва</param>
+            <returns>Созданный отзыв</returns>
+            <response code="201">Отзыв успешно создан</response>
+            <response code="400">Некорректные данные (товар не найден, недостаточно прав для отзыва, рейтинг вне диапазона 1-5)</response>
+            <response code="401">Не авторизован</response>
+            <response code="409">Отзыв на этот товар уже существует</response>
+            <remarks>
+            Пользователь может оставить отзыв только на товар, который он приобрел и получил (статус заказа "Доставлен").
+            На один товар можно оставить только один отзыв. Рейтинг должен быть от 1 до 5.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.DeleteReview(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить отзыв
+            </summary>
+            <param name="id">Идентификатор отзыва</param>
+            <returns>Результат операции</returns>
+            <response code="204">Отзыв успешно удален</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (можно удалить только свой отзыв)</response>
+            <response code="404">Отзыв не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <remarks>
+            Пользователь может удалить только свой отзыв. Администраторы и менеджеры могут удалять любые отзывы.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.HardDeleteReview(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить отзыв
+            </summary>
+            <param name="id">Идентификатор отзыва</param>
+            <returns>Результат операции</returns>
+            <response code="204">Отзыв успешно удален</response>
+            <response code="404">Отзыв не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.RestoreReview(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленный отзыв
+            </summary>
+            <param name="id">Идентификатор отзыва</param>
+            <returns>Восстановленный отзыв</returns>
+            <response code="200">Отзыв успешно восстановлен</response>
+            <response code="400">Отзыв не был удален или ошибка при восстановлении</response>
+            <response code="404">Отзыв не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.ReviewsController.CheckReviewEligibility(System.Int32)">
+            <summary>
+            Проверить возможность оставить отзыв на товар
+            </summary>
+            <param name="productId">Идентификатор товара</param>
+            <returns>Информация о возможности оставить отзыв</returns>
+            <response code="200">Проверка выполнена успешно</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Товар не найден</response>
+            <remarks>
+            Возвращает информацию о том, может ли пользователь оставить отзыв на товар:
+            - canReview: может ли пользователь оставить отзыв
+            - hasPurchased: купил ли пользователь товар
+            - hasExistingReview: есть ли уже отзыв от этого пользователя
+            </remarks>
+        </member>
+        <member name="T:soratech_api.Controllers.RolesController">
+            <summary>
+            Контроллер для управления ролями пользователей
+            </summary>
+            <remarks>
+            Управление ролями: получение, создание, обновление, удаление ролей пользователей. Требуется роль Администратор.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.RolesController.GetRoles">
+            <summary>
+            Получить список всех ролей
+            </summary>
+            <returns>Список ролей</returns>
+            <response code="200">Список ролей успешно получен</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.RolesController.GetRole(System.Nullable{System.Int32})">
+            <summary>
+            Получить роль по ID
+            </summary>
+            <param name="id">Идентификатор роли</param>
+            <returns>Данные роли</returns>
+            <response code="200">Роль найдена</response>
+            <response code="404">Роль не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.RolesController.PutRole(System.Nullable{System.Int32},soratech_api.Models.Role)">
+            <summary>
+            Обновить роль
+            </summary>
+            <param name="id">Идентификатор роли</param>
+            <param name="role">Обновленные данные роли</param>
+            <returns>Результат операции</returns>
+            <response code="204">Роль успешно обновлена</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Роль не найдена</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.RolesController.PostRole(soratech_api.Models.Role)">
+            <summary>
+            Создать новую роль
+            </summary>
+            <param name="role">Данные новой роли</param>
+            <returns>Созданная роль</returns>
+            <response code="201">Роль успешно создана</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.RolesController.DeleteRole(System.Nullable{System.Int32})">
+            <summary>
+            Удалить роль
+            </summary>
+            <param name="id">Идентификатор роли</param>
+            <returns>Результат операции</returns>
+            <response code="204">Роль успешно удалена</response>
+            <response code="404">Роль не найдена</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.StatusOrdersController">
+            <summary>
+            Контроллер для управления статусами заказов
+            </summary>
+            <remarks>
+            Управление статусами заказов: получение, создание, обновление, удаление статусов заказов
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.StatusOrdersController.GetStatusOrders">
+            <summary>
+            Получить список всех статусов заказов
+            </summary>
+            <returns>Список статусов заказов</returns>
+            <response code="200">Список статусов заказов успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.StatusOrdersController.GetStatusOrder(System.Nullable{System.Int32})">
+            <summary>
+            Получить статус заказа по ID
+            </summary>
+            <param name="id">Идентификатор статуса заказа</param>
+            <returns>Данные статуса заказа</returns>
+            <response code="200">Статус заказа найден</response>
+            <response code="404">Статус заказа не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.StatusOrdersController.PutStatusOrder(System.Nullable{System.Int32},soratech_api.Models.StatusOrder)">
+            <summary>
+            Обновить статус заказа
+            </summary>
+            <param name="id">Идентификатор статуса заказа</param>
+            <param name="statusOrder">Обновленные данные статуса заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Статус заказа успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Статус заказа не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.StatusOrdersController.PostStatusOrder(soratech_api.Models.StatusOrder)">
+            <summary>
+            Создать новый статус заказа
+            </summary>
+            <param name="statusOrder">Данные нового статуса заказа</param>
+            <returns>Созданный статус заказа</returns>
+            <response code="201">Статус заказа успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.StatusOrdersController.DeleteStatusOrder(System.Nullable{System.Int32})">
+            <summary>
+            Удалить статус заказа
+            </summary>
+            <param name="id">Идентификатор статуса заказа</param>
+            <returns>Результат операции</returns>
+            <response code="204">Статус заказа успешно удален</response>
+            <response code="404">Статус заказа не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.SuppliersController">
+            <summary>
+            Контроллер для управления поставщиками
+            </summary>
+            <remarks>
+            Управление поставщиками: получение, создание, обновление, удаление поставщиков товаров
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.GetSuppliers(System.Boolean)">
+            <summary>
+            Получить список всех поставщиков
+            </summary>
+            <param name="includeDeleted">Включать ли удаленных поставщиков в результат (по умолчанию: false)</param>
+            <returns>Список поставщиков</returns>
+            <response code="200">Список поставщиков успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.GetSupplier(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить поставщика по ID
+            </summary>
+            <param name="id">Идентификатор поставщика</param>
+            <param name="includeDeleted">Включать ли удаленных поставщиков (по умолчанию: false)</param>
+            <returns>Данные поставщика</returns>
+            <response code="200">Поставщик найден</response>
+            <response code="404">Поставщик не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.PutSupplier(System.Nullable{System.Int32},soratech_api.Models.Supplier)">
+            <summary>
+            Обновить данные поставщика
+            </summary>
+            <param name="id">Идентификатор поставщика</param>
+            <param name="supplier">Обновленные данные поставщика</param>
+            <returns>Результат операции</returns>
+            <response code="204">Поставщик успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Поставщик не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.PostSupplier(soratech_api.Models.Supplier)">
+            <summary>
+            Создать нового поставщика
+            </summary>
+            <param name="supplier">Данные нового поставщика</param>
+            <returns>Созданный поставщик</returns>
+            <response code="201">Поставщик успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.DeleteSupplier(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить поставщика
+            </summary>
+            <param name="id">Идентификатор поставщика</param>
+            <returns>Результат операции</returns>
+            <response code="204">Поставщик успешно удален</response>
+            <response code="404">Поставщик не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.HardDeleteSupplier(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить поставщика
+            </summary>
+            <param name="id">Идентификатор поставщика</param>
+            <returns>Результат операции</returns>
+            <response code="204">Поставщик успешно удален</response>
+            <response code="404">Поставщик не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.SuppliersController.RestoreSupplier(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленного поставщика
+            </summary>
+            <param name="id">Идентификатор поставщика</param>
+            <returns>Восстановленный поставщик</returns>
+            <response code="200">Поставщик успешно восстановлен</response>
+            <response code="400">Поставщик не был удален или ошибка при восстановлении</response>
+            <response code="404">Поставщик не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор или Менеджер)</response>
+        </member>
+        <member name="T:soratech_api.Controllers.UsersController">
+            <summary>
+            Контроллер для управления пользователями системы
+            </summary>
+            <remarks>
+            Управление пользователями: получение, создание, обновление, удаление пользователей, управление настройками (тема, валюта)
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.GetUsers(System.Boolean)">
+            <summary>
+            Получить список всех пользователей
+            </summary>
+            <param name="includeDeleted">Включать ли удаленных пользователей в результат (по умолчанию: false)</param>
+            <returns>Список пользователей</returns>
+            <response code="200">Список пользователей успешно получен</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.GetUser(System.Nullable{System.Int32},System.Boolean)">
+            <summary>
+            Получить пользователя по ID
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <param name="includeDeleted">Включать ли удаленных пользователей (по умолчанию: false)</param>
+            <returns>Данные пользователя</returns>
+            <response code="200">Пользователь найден</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.UpdateUserRole(System.Nullable{System.Int32},soratech_api.Models.DTO.UpdateUserRoleDto)">
+            <summary>
+            Изменить роль пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <param name="roleDto">DTO с новой ролью пользователя</param>
+            <returns>Результат операции</returns>
+            <response code="200">Роль пользователя успешно обновлена</response>
+            <response code="400">Некорректные данные (роль не найдена)</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.PutUser(System.Nullable{System.Int32},soratech_api.Models.User)">
+            <summary>
+            Обновить данные пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <param name="user">Обновленные данные пользователя</param>
+            <returns>Результат операции</returns>
+            <response code="204">Пользователь успешно обновлен</response>
+            <response code="400">Некорректные данные</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+            <remarks>
+            Обновляет только разрешенные поля: FirstName, Nickname, Phone, IsDarkTheme, Deleted.
+            Роль, пароль, email и дата регистрации защищены от изменения через этот метод.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.PostUser(soratech_api.Models.User)">
+            <summary>
+            Создать нового пользователя
+            </summary>
+            <param name="user">Данные нового пользователя</param>
+            <returns>Созданный пользователь</returns>
+            <response code="201">Пользователь успешно создан</response>
+            <response code="400">Некорректные данные</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.DeleteUser(System.Nullable{System.Int32})">
+            <summary>
+            Логически удалить пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <returns>Результат операции</returns>
+            <response code="204">Пользователь успешно удален</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+            <remarks>
+            Выполняет логическое удаление (soft delete) - устанавливает флаг Deleted = true.
+            Пользователь остается в базе данных, но скрыт из обычных запросов.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.HardDeleteUser(System.Nullable{System.Int32})">
+            <summary>
+            Физически удалить пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <returns>Результат операции</returns>
+            <response code="204">Пользователь успешно удален</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="400">Ошибка при удалении</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+            <remarks>
+            Выполняет физическое удаление (hard delete) - полностью удаляет запись из базы данных.
+            ВНИМАНИЕ: Операция необратима!
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.RestoreUser(System.Nullable{System.Int32})">
+            <summary>
+            Восстановить удаленного пользователя
+            </summary>
+            <param name="id">Идентификатор пользователя</param>
+            <returns>Восстановленный пользователь</returns>
+            <response code="200">Пользователь успешно восстановлен</response>
+            <response code="400">Пользователь не был удален или ошибка при восстановлении</response>
+            <response code="404">Пользователь не найден</response>
+            <response code="401">Не авторизован</response>
+            <response code="403">Недостаточно прав (требуется роль Администратор)</response>
+            <remarks>
+            Восстанавливает логически удаленного пользователя, устанавливая флаг Deleted = false.
+            </remarks>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.UpdateTheme(System.Boolean)">
+            <summary>
+            Изменить тему интерфейса пользователя
+            </summary>
+            <param name="isDarkTheme">true - темная тема, false - светлая тема</param>
+            <returns>Результат операции</returns>
+            <response code="200">Тема успешно изменена</response>
+            <response code="400">Ошибка при изменении темы</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Пользователь не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.GetTheme">
+            <summary>
+            Получить текущую тему интерфейса пользователя
+            </summary>
+            <returns>Текущая тема (true - темная, false - светлая)</returns>
+            <response code="200">Тема успешно получена</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Пользователь не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.UpdateCurrency(System.String)">
+            <summary>
+            Изменить валюту пользователя
+            </summary>
+            <param name="currency">Валюта: "RUB" или "USD"</param>
+            <returns>Результат операции</returns>
+            <response code="200">Валюта успешно изменена</response>
+            <response code="400">Некорректная валюта или ошибка при изменении</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Пользователь не найден</response>
+        </member>
+        <member name="M:soratech_api.Controllers.UsersController.GetCurrency">
+            <summary>
+            Получить текущую валюту пользователя
+            </summary>
+            <returns>Текущая валюта (RUB или USD)</returns>
+            <response code="200">Валюта успешно получена</response>
+            <response code="401">Не авторизован</response>
+            <response code="404">Пользователь не найден</response>
+        </member>
+        <member name="M:soratech_api.Extensions.DbContextExtensions.SetCurrentUserIdFromClaims(soratech_api.Models.SoraTechDbContext,System.Security.Claims.ClaimsPrincipal)">
+            <summary>
+            Устанавливает user_id для аудита из JWT токена
+            </summary>
+        </member>
+        <member name="T:soratech_api.Middleware.ExceptionHandlingMiddleware">
+            <summary>
+            Глобальный обработчик исключений для API
+            </summary>
+        </member>
+        <member name="M:soratech_api.Models.SoraTechDbContext.SetCurrentUserId(System.Nullable{System.Int32})">
+            <summary>
+            Устанавливает ID текущего пользователя для аудита
+            </summary>
+        </member>
+    </members>
+</doc>
